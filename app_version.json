@@ -1,7 +1,7 @@
 {
-  "release_notes": "プロフィールに「アップデートを確認」ボタンを追加",
+  "release_notes": "システムナビゲーションバー (画面下の3ボタン) を隠せるフラグを追加。プロフィール → 詳細設定 → 「システムナビゲーションバーを隠す」で切替可能。",
+  "latest_version": "1.5.5",
   "min_supported_version": "1.2.1",
-  "released_at": "2026-05-10T19:56:49Z",
-  "latest_version": "1.5.4",
-  "download_url": "https://github.com/Himanaraba/attendance-app/releases/download/v1.5.4/app-release.apk"
+  "released_at": "2026-05-20T13:42:47Z",
+  "download_url": "https://github.com/Himanaraba/attendance-app/releases/download/v1.5.5/app-release.apk"
 }
