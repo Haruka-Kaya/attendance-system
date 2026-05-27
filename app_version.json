@@ -1,7 +1,7 @@
 {
-  "released_at": "2026-05-20T14:28:28Z",
-  "release_notes": "アップデート画面が言語設定 (日本語/英語) に追従するように修正。「新しいバージョンが利用可能」「今すぐ更新」「後で」「変更内容」などのテキストが選択中の言語で表示されます。",
-  "download_url": "https://github.com/Himanaraba/attendance-app/releases/download/v1.5.7/app-release.apk",
+  "latest_version": "1.6.0",
+  "release_notes": "APK サイズ大幅軽量化 (54MB→18MB)。R8 minify + shrinkResources + split-per-abi (arm64) + obfuscate 有効化。iOS でもアップデート確認に対応 (TestFlight 誘導)。",
   "min_supported_version": "1.2.1",
-  "latest_version": "1.5.7"
+  "download_url": "https://github.com/Himanaraba/attendance-app/releases/download/v1.6.0/app-arm64-v8a-release.apk",
+  "released_at": "2026-05-27T07:56:27Z"
 }
