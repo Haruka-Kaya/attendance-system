@@ -1938,6 +1938,16 @@ def api_app_latest():
 def guide():
     return render_template('guide.html')
 
+# ── Public pages (App Store 審査用・ログイン不要) ─────────────────────────────
+
+@app.route('/privacy')
+def privacy():
+    return render_template('privacy.html')
+
+@app.route('/support')
+def support():
+    return render_template('support.html')
+
 # ── Error handlers ─────────────────────────────────────────────────────────────
 
 @app.errorhandler(403)

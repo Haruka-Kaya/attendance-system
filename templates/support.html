@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}{{ msg('Support','サポート') }}{% endblock %}
+{% block content %}
+<div class="container" style="max-width:720px;margin:2rem auto;padding:0 1rem;">
+
+<h1>{{ msg('Support','サポート') }}</h1>
+
+<h2>{{ msg('Contact','お問い合わせ') }}</h2>
+<p>{{ msg(
+  'For bug reports, feature requests, or account issues, please contact:',
+  'バグ報告・機能要望・アカウントに関するお問い合わせ:'
+) }}</p>
+<p><a href="mailto:kayaharuka@hotmail.com">kayaharuka@hotmail.com</a></p>
+
+<h2>{{ msg('FAQ','よくある質問') }}</h2>
+
+<details>
+  <summary>{{ msg('I forgot my password','パスワードを忘れました') }}</summary>
+  <p>{{ msg(
+    'Please contact the administrator to reset your password.',
+    '管理者に連絡してパスワードをリセットしてもらってください。'
+  ) }}</p>
+</details>
+
+<details>
+  <summary>{{ msg('My account is locked','アカウントがロックされました') }}</summary>
+  <p>{{ msg(
+    'After too many failed login attempts, your account is locked for 30 minutes. Please wait and try again, or contact the administrator.',
+    'ログイン失敗が多すぎるとアカウントが30分間ロックされます。しばらく待ってから再試行するか、管理者に連絡してください。'
+  ) }}</p>
+</details>
+
+<details>
+  <summary>{{ msg('How do I update the app?','アプリの更新方法は？') }}</summary>
+  <p>{{ msg(
+    'Android: The app checks for updates automatically on startup. You can also check manually from Profile > Check for update. iOS: Updates are delivered via TestFlight or the App Store.',
+    'Android: 起動時に自動で更新確認します。プロフィール → アップデートを確認 から手動確認も可能です。iOS: TestFlight または App Store から更新されます。'
+  ) }}</p>
+</details>
+
+<details>
+  <summary>{{ msg('I want my data deleted','データの削除を希望します') }}</summary>
+  <p>{{ msg(
+    'Please contact the administrator via email. Your account and all associated data will be permanently deleted.',
+    '管理者にメールでご連絡ください。アカウントと関連データをすべて完全に削除します。'
+  ) }}</p>
+</details>
+
+<h2>{{ msg('Source Code','ソースコード') }}</h2>
+<p>{{ msg('This app is open source under the Apache License 2.0.','このアプリは Apache License 2.0 のオープンソースです。') }}</p>
+<ul>
+  <li><a href="https://github.com/Himanaraba/attendance-system" target="_blank">Backend (Flask)</a></li>
+  <li><a href="https://github.com/Himanaraba/attendance-app" target="_blank">Mobile (Flutter)</a></li>
+</ul>
+
+</div>
+{% endblock %}

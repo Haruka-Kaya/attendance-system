@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}{{ msg('Privacy Policy','プライバシーポリシー') }}{% endblock %}
+{% block content %}
+<div class="container" style="max-width:720px;margin:2rem auto;padding:0 1rem;">
+
+<h1>{{ msg('Privacy Policy','プライバシーポリシー') }}</h1>
+<p style="color:#666;font-size:.9rem;">{{ msg('Last updated: May 2026','最終更新: 2026年5月') }}</p>
+
+<h2>{{ msg('1. Information We Collect','1. 収集する情報') }}</h2>
+<ul>
+  <li>{{ msg('Name','氏名') }}</li>
+  <li>{{ msg('Email address','メールアドレス') }}</li>
+  <li>{{ msg('Grade / Year','学年') }}</li>
+  <li>{{ msg('Team assignment','チーム') }}</li>
+  <li>{{ msg('Date of birth','誕生日') }}</li>
+  <li>{{ msg('Attendance records','出欠記録') }}</li>
+  <li>{{ msg('Discord user ID (optional)','Discord ユーザー ID (任意)') }}</li>
+</ul>
+
+<h2>{{ msg('2. Purpose of Use','2. 利用目的') }}</h2>
+<p>{{ msg(
+  'We collect personal information solely to manage attendance for club activities. This includes tracking attendance, generating statistics, and sending notifications about upcoming activities.',
+  '個人情報は部活動の出欠管理のみを目的として収集します。出欠の記録・統計の生成・活動予定の通知に使用します。'
+) }}</p>
+
+<h2>{{ msg('3. Third-Party Sharing','3. 第三者への提供') }}</h2>
+<p>{{ msg(
+  'We do not share your personal information with any third parties. Your data is only accessible to the club administrators and yourself.',
+  '個人情報を第三者に提供することはありません。データにアクセスできるのは部活動の管理者と本人のみです。'
+) }}</p>
+
+<h2>{{ msg('4. Data Storage','4. データの保存') }}</h2>
+<p>{{ msg(
+  'Your data is stored on a private server (VPS) operated by the developer. The server is protected with HTTPS encryption and access controls.',
+  'データは開発者が運用するプライベートサーバー (VPS) に保存されます。サーバーは HTTPS 暗号化とアクセス制御で保護されています。'
+) }}</p>
+
+<h2>{{ msg('5. Data Retention and Deletion','5. データの保持と削除') }}</h2>
+<p>{{ msg(
+  'Your data is retained for as long as you are a member of the club. To request deletion of your data, please contact the administrator.',
+  'データは部活動に所属している間保持されます。データの削除を希望する場合は管理者にご連絡ください。'
+) }}</p>
+
+<h2>{{ msg('6. Security','6. セキュリティ') }}</h2>
+<p>{{ msg(
+  'Passwords are hashed using PBKDF2-SHA256. All communications are encrypted via HTTPS/TLS. Login attempts are rate-limited and monitored.',
+  'パスワードは PBKDF2-SHA256 でハッシュ化されます。すべての通信は HTTPS/TLS で暗号化されています。ログイン試行は流量制限と監視を行っています。'
+) }}</p>
+
+<h2>{{ msg('7. Contact','7. お問い合わせ') }}</h2>
+<p>{{ msg(
+  'For questions about this privacy policy or your personal data, please contact:',
+  'このプライバシーポリシーまたは個人情報に関するお問い合わせ:'
+) }}</p>
+<p><a href="mailto:kayaharuka@hotmail.com">kayaharuka@hotmail.com</a></p>
+
+</div>
+{% endblock %}
