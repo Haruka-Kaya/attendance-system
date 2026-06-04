@@ -6,7 +6,13 @@ import json
 import secrets
 import zipfile
 from collections import defaultdict
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
+
+JST = timezone(timedelta(hours=9))
+
+def today_jst():
+    """JST (日本時間) ベースの「今日」を返す。サーバーが UTC でも JST の日付を返す。"""
+    return datetime.now(JST).date()
 from functools import wraps
 
 import click
@@ -131,7 +137,7 @@ def auto_generate_events():
     templates = WeeklyTemplate.query.filter_by(is_auto=True).all()
     if not templates:
         return 0
-    today = date.today()
+    today = today_jst()
     created = 0
     for week_offset in range(6):
         for tmpl in templates:
@@ -397,7 +403,7 @@ def toggle_lang():
 @login_required()
 def dashboard():
     user = g.current_user
-    today = date.today()
+    today = today_jst()
     thirty_ago = today - timedelta(days=30)
 
     # 自動生成テンプレートがあれば今日〜5週先を補完
@@ -733,11 +739,11 @@ def admin_delete_event(eid):
 @app.route('/admin/attendance')
 @login_required(['manager', 'admin'])
 def admin_attendance():
-    date_str = request.args.get('date', date.today().isoformat())
+    date_str = request.args.get('date', today_jst().isoformat())
     try:
         sel_date = datetime.strptime(date_str, '%Y-%m-%d').date()
     except ValueError:
-        sel_date = date.today()
+        sel_date = today_jst()
 
     events = Event.query.filter_by(date=sel_date).order_by(Event.start_time).all()
     users = User.query.filter_by(is_active=True).order_by(User.name).all()
@@ -795,11 +801,11 @@ def admin_bulk_update():
 @app.route('/admin/export/date')
 @login_required(['manager', 'admin'])
 def admin_export_date():
-    date_str = request.args.get('date', date.today().isoformat())
+    date_str = request.args.get('date', today_jst().isoformat())
     try:
         sel_date = datetime.strptime(date_str, '%Y-%m-%d').date()
     except ValueError:
-        sel_date = date.today()
+        sel_date = today_jst()
 
     events = Event.query.filter_by(date=sel_date).order_by(Event.start_time).all()
     users = User.query.filter_by(is_active=True).order_by(User.name).all()
@@ -1519,7 +1525,7 @@ def api_v1_events():
 @app.route('/api/v1/events/upcoming')
 @jwt_role()
 def api_v1_events_upcoming():
-    today = date.today()
+    today = today_jst()
     events = (Event.query
               .filter(Event.date >= today)
               .order_by(Event.date, Event.start_time)
