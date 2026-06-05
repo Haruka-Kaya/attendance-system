@@ -239,9 +239,9 @@ def add_security_headers(response):
     # 外部ロード元は最小限に絞る。
     h['Content-Security-Policy'] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline'; "
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-        "font-src 'self' https://fonts.gstatic.com data:; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; "
+        "font-src 'self' https://cdn.jsdelivr.net https://fonts.gstatic.com data:; "
         "img-src 'self' data:; "
         "connect-src 'self' https://api.pwnedpasswords.com https://discord.com; "
         "frame-ancestors 'none'; "
