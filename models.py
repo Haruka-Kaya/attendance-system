@@ -105,15 +105,31 @@ class AuditLog(db.Model):
     __tablename__ = 'audit_logs'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
-    action = db.Column(db.String(50), nullable=False)  # login.success, login.fail, user.add, etc
+    action = db.Column(db.String(50), nullable=False, index=True)  # login.success, login.fail, user.add, etc
     target_type = db.Column(db.String(30), nullable=True)  # user, event, attendance...
     target_id = db.Column(db.Integer, nullable=True)
-    ip = db.Column(db.String(45), nullable=True)  # IPv4/IPv6
+    ip = db.Column(db.String(45), nullable=True, index=True)  # IPv4/IPv6
     user_agent = db.Column(db.String(255), nullable=True)
     detail = db.Column(db.Text, nullable=True)  # 任意の追加情報 (JSON文字列推奨)
+    severity = db.Column(db.String(10), default='info', nullable=False, index=True)  # info / warning / critical
+    # hash chain で改ざん検知 (前レコードの record_hash + 自身の内容を SHA-256)
+    prev_hash = db.Column(db.String(64), nullable=True)
+    record_hash = db.Column(db.String(64), nullable=True, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
     user = db.relationship('User', backref='audit_logs', lazy=True)
+
+
+class TokenBlocklist(db.Model):
+    """JWT logout 時に jti を登録して無効化する。
+    expires_at を過ぎたレコードは定期的に削除可能 (現状は手動)。"""
+    __tablename__ = 'token_blocklist'
+    id = db.Column(db.Integer, primary_key=True)
+    jti = db.Column(db.String(36), unique=True, nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    revoked_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=True, index=True)
+    reason = db.Column(db.String(50), nullable=True)  # logout / password_change / admin_revoke
 
 
 class WeeklyTemplate(db.Model):

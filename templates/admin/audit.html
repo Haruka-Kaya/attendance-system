@@ -2,51 +2,85 @@
 {% block title %}{{ msg('Audit Log','監査ログ') }}{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h4><i class="bi bi-shield-check"></i> {{ msg('Audit Log','監査ログ') }}</h4>
-  <span class="text-muted small">{{ total }} {{ msg('entries','件') }}</span>
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+  <h4 class="mb-0"><i class="bi bi-shield-check"></i> {{ msg('Audit Log','監査ログ') }}</h4>
+  <div class="d-flex gap-2">
+    <button class="btn btn-sm btn-outline-secondary" type="button" id="btn-verify">
+      <i class="bi bi-check2-circle"></i> {{ msg('Verify integrity','改ざん検知') }}
+    </button>
+    <a class="btn btn-sm btn-outline-success"
+       href="{{ url_for('admin_audit_export', action=action_filter, severity=severity_filter) }}">
+      <i class="bi bi-download"></i> CSV
+    </a>
+    <span class="badge bg-secondary align-self-center">{{ total }} {{ msg('entries','件') }}</span>
+  </div>
 </div>
 
+<div id="verify-result" class="alert d-none mb-3"></div>
+
 <form method="get" class="mb-3">
-  <div class="input-group input-group-sm">
-    <input type="text" name="action" class="form-control" value="{{ action_filter }}"
-           placeholder="action prefix (例: login, password, user)">
-    <button class="btn btn-outline-primary"><i class="bi bi-search"></i></button>
-    {% if action_filter %}
-    <a href="{{ url_for('admin_audit') }}" class="btn btn-outline-secondary">
-      <i class="bi bi-x"></i>
-    </a>
-    {% endif %}
+  <div class="row g-2">
+    <div class="col-md-3">
+      <input type="text" name="action" class="form-control form-control-sm" value="{{ action_filter }}"
+             placeholder="{{ msg('action prefix','アクション (例: login, user)') }}">
+    </div>
+    <div class="col-md-2">
+      <select name="severity" class="form-select form-select-sm">
+        <option value="">{{ msg('All severity','全レベル') }}</option>
+        <option value="info"     {% if severity_filter=='info'     %}selected{% endif %}>info</option>
+        <option value="warning"  {% if severity_filter=='warning'  %}selected{% endif %}>warning</option>
+        <option value="critical" {% if severity_filter=='critical' %}selected{% endif %}>critical</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <input type="text" name="user" class="form-control form-control-sm" value="{{ user_filter }}"
+             placeholder="{{ msg('user (name/email)','ユーザー (名前/メール)') }}">
+    </div>
+    <div class="col-md-2">
+      <input type="text" name="ip" class="form-control form-control-sm" value="{{ ip_filter }}"
+             placeholder="IP prefix">
+    </div>
+    <div class="col-md-1">
+      <input type="date" name="from" class="form-control form-control-sm" value="{{ from_filter }}">
+    </div>
+    <div class="col-md-1">
+      <input type="date" name="to" class="form-control form-control-sm" value="{{ to_filter }}">
+    </div>
+    <div class="col-md-1 d-flex gap-1">
+      <button class="btn btn-sm btn-outline-primary flex-fill"><i class="bi bi-search"></i></button>
+      <a href="{{ url_for('admin_audit') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x"></i></a>
+    </div>
   </div>
 </form>
 
 <div class="table-responsive">
-  <table class="table table-sm table-hover small">
+  <table class="table table-sm table-hover small align-middle">
     <thead class="table-light">
       <tr>
         <th>{{ msg('Time','日時') }}</th>
+        <th>{{ msg('Sev','レベル') }}</th>
         <th>{{ msg('Action','アクション') }}</th>
         <th>{{ msg('User','ユーザー') }}</th>
         <th>{{ msg('IP','IP') }}</th>
         <th>{{ msg('Target','対象') }}</th>
         <th>{{ msg('Detail','詳細') }}</th>
+        <th>hash</th>
       </tr>
     </thead>
     <tbody>
       {% for log in logs %}
-      <tr>
-        <td class="text-muted">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+      <tr class="{% if log.severity=='critical' %}table-danger{% elif log.severity=='warning' %}table-warning{% endif %}">
+        <td class="text-muted text-nowrap">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
         <td>
-          {% if 'fail' in log.action or 'locked' in log.action %}
-            <span class="badge bg-danger">{{ log.action }}</span>
-          {% elif 'success' in log.action %}
-            <span class="badge bg-success">{{ log.action }}</span>
-          {% elif 'change' in log.action or 'update' in log.action %}
-            <span class="badge bg-warning text-dark">{{ log.action }}</span>
+          {% if log.severity == 'critical' %}
+            <span class="badge bg-danger">CRIT</span>
+          {% elif log.severity == 'warning' %}
+            <span class="badge bg-warning text-dark">WARN</span>
           {% else %}
-            <code>{{ log.action }}</code>
+            <span class="badge bg-secondary">info</span>
           {% endif %}
         </td>
+        <td><code>{{ log.action }}</code></td>
         <td>{{ log.user.name if log.user else '-' }}</td>
         <td><code class="small">{{ log.ip or '-' }}</code></td>
         <td>
@@ -54,11 +88,15 @@
             {{ log.target_type }}#{{ log.target_id or '?' }}
           {% else %}-{% endif %}
         </td>
-        <td class="small text-muted" style="max-width: 250px; overflow: hidden; text-overflow: ellipsis;"
+        <td class="small text-muted" style="max-width: 280px; overflow: hidden; text-overflow: ellipsis;"
             title="{{ log.detail or '' }}">{{ log.detail or '' }}</td>
+        <td class="text-muted" style="font-family: monospace; font-size: 10px;"
+            title="prev: {{ log.prev_hash or '-' }}&#10;rec:  {{ log.record_hash or '-' }}">
+          {{ (log.record_hash or '-')[:8] }}
+        </td>
       </tr>
       {% else %}
-      <tr><td colspan="6" class="text-center text-muted py-3">
+      <tr><td colspan="8" class="text-center text-muted py-3">
         {{ msg('No logs','ログなし') }}
       </td></tr>
       {% endfor %}
@@ -68,20 +106,46 @@
 
 {% if total > per_page %}
 {% set last_page = (total + per_page - 1) // per_page %}
+{% set qs = '' %}
+{% if action_filter   %}{% set qs = qs + '&action=' + action_filter %}{% endif %}
+{% if severity_filter %}{% set qs = qs + '&severity=' + severity_filter %}{% endif %}
+{% if user_filter     %}{% set qs = qs + '&user=' + user_filter %}{% endif %}
+{% if ip_filter       %}{% set qs = qs + '&ip=' + ip_filter %}{% endif %}
+{% if from_filter     %}{% set qs = qs + '&from=' + from_filter %}{% endif %}
+{% if to_filter       %}{% set qs = qs + '&to=' + to_filter %}{% endif %}
 <nav>
   <ul class="pagination pagination-sm justify-content-center">
     {% if page > 1 %}
-    <li class="page-item">
-      <a class="page-link" href="?page={{ page - 1 }}{% if action_filter %}&action={{ action_filter }}{% endif %}">«</a>
-    </li>
+    <li class="page-item"><a class="page-link" href="?page={{ page - 1 }}{{ qs }}">«</a></li>
     {% endif %}
     <li class="page-item disabled"><span class="page-link">{{ page }} / {{ last_page }}</span></li>
     {% if page < last_page %}
-    <li class="page-item">
-      <a class="page-link" href="?page={{ page + 1 }}{% if action_filter %}&action={{ action_filter }}{% endif %}">»</a>
-    </li>
+    <li class="page-item"><a class="page-link" href="?page={{ page + 1 }}{{ qs }}">»</a></li>
     {% endif %}
   </ul>
 </nav>
 {% endif %}
+
+<script>
+document.getElementById('btn-verify').addEventListener('click', async () => {
+  const result = document.getElementById('verify-result');
+  result.className = 'alert alert-info mb-3';
+  result.classList.remove('d-none');
+  result.textContent = '検証中...';
+  try {
+    const r = await fetch('{{ url_for("admin_audit_verify") }}');
+    const j = await r.json();
+    if (j.ok) {
+      result.className = 'alert alert-success mb-3';
+      result.innerHTML = `<i class="bi bi-shield-check"></i> 改ざんなし (${j.total_checked} 件チェック)`;
+    } else {
+      result.className = 'alert alert-danger mb-3';
+      result.innerHTML = `<i class="bi bi-exclamation-triangle"></i> 改ざんを検知: 壊れた ID = ${j.broken_ids.join(', ')}`;
+    }
+  } catch (e) {
+    result.className = 'alert alert-danger mb-3';
+    result.textContent = 'エラー: ' + e.message;
+  }
+});
+</script>
 {% endblock %}

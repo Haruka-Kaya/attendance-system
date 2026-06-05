@@ -59,7 +59,28 @@ else:
 app.config['JWT_SECRET_KEY'] = _jwt_secret
 app.config['JWT_ACCESS_TOKEN_EXPIRES']  = timedelta(hours=2)
 app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)
-JWTManager(app)
+# JWT ブラックリスト機能を有効化 (logout 時に jti 登録)
+app.config['JWT_BLOCKLIST_ENABLED'] = True
+app.config['JWT_BLOCKLIST_TOKEN_CHECKS'] = ['access', 'refresh']
+
+# セッション Cookie のセキュリティ設定
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SECURE']   = not app.debug   # 本番は HTTPS のみ
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
+jwt_mgr = JWTManager(app)
+
+
+@jwt_mgr.token_in_blocklist_loader
+def _is_token_revoked(jwt_header, jwt_payload):
+    from models import TokenBlocklist
+    jti = jwt_payload.get('jti')
+    if not jti:
+        return False
+    try:
+        return TokenBlocklist.query.filter_by(jti=jti).first() is not None
+    except Exception:
+        return False
 
 # CORS: /api/v1/* のみ Flutter からのアクセスを許可
 CORS(app, resources={r'/api/v1/*': {'origins': '*'}})
@@ -173,7 +194,11 @@ def apply_migrations():
     _safe_add_column('events', 'description', 'TEXT DEFAULT ""')
     _safe_add_column('users', 'discord_id', 'VARCHAR(32)')
     _safe_add_column('users', 'birthday', 'DATE')
-    # AuditLog テーブル作成 (新規)
+    # 監査ログの hash chain + severity (新規)
+    _safe_add_column('audit_logs', 'severity',    "VARCHAR(10) DEFAULT 'info'")
+    _safe_add_column('audit_logs', 'prev_hash',   'VARCHAR(64)')
+    _safe_add_column('audit_logs', 'record_hash', 'VARCHAR(64)')
+    # AuditLog / TokenBlocklist テーブル作成 (新規)
     try:
         db.create_all()
     except Exception:
@@ -203,11 +228,35 @@ def add_security_headers(response):
     h = response.headers
     h['X-Content-Type-Options'] = 'nosniff'
     h['X-Frame-Options'] = 'DENY'
-    h['X-XSS-Protection'] = '1; mode=block'
     h['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-    h['Permissions-Policy'] = 'geolocation=(), camera=(), microphone=()'
+    h['Permissions-Policy'] = (
+        'geolocation=(), camera=(), microphone=(), '
+        'payment=(), usb=(), accelerometer=(), gyroscope=()'
+    )
+    h['Cross-Origin-Opener-Policy'] = 'same-origin'
+    h['Cross-Origin-Resource-Policy'] = 'same-origin'
+    # CSP: テンプレートのインライン script/style に対応するため 'unsafe-inline' は許容。
+    # 外部ロード元は最小限に絞る。
+    h['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com data:; "
+        "img-src 'self' data:; "
+        "connect-src 'self' https://api.pwnedpasswords.com https://discord.com; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'"
+    )
     if not app.debug:
-        h['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        h['Strict-Transport-Security'] = 'max-age=63072000; includeSubDomains; preload'
+        # 古い X-XSS-Protection はモダンブラウザでは非推奨なので明示的に無効化
+        h['X-XSS-Protection'] = '0'
+    # Cookie はセッション側で secure/samesite/httponly 設定するが念のため明示
+    if session and request.is_secure:
+        # session cookie に SameSite=Lax / Secure / HttpOnly を強制する設定は
+        # SESSION_COOKIE_* で行う想定。ここでは何もしない。
+        pass
     return response
 
 # ── Context processor ──────────────────────────────────────────────────────────
@@ -250,7 +299,7 @@ def login_required(role=None):
 # ── Auth routes ────────────────────────────────────────────────────────────────
 
 @app.route('/login', methods=['GET', 'POST'])
-@limiter.limit('10 per minute', methods=['POST'])
+@limiter.limit('5 per minute; 30 per hour', methods=['POST'])
 def login():
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
@@ -285,17 +334,28 @@ def login():
         else:
             if user:
                 user.failed_login_attempts += 1
-                if user.failed_login_attempts >= MAX_ATTEMPTS:
-                    user.locked_until = datetime.utcnow() + timedelta(minutes=LOCKOUT_MINUTES)
-                    flash(msg(f'Too many failures. Locked for {LOCKOUT_MINUTES} min.',
-                              f'失敗が多すぎます。{LOCKOUT_MINUTES}分間ロックされました。'), 'danger')
+                lock_min = security.compute_lock_minutes(user.failed_login_attempts)
+                if lock_min > 0:
+                    user.locked_until = datetime.utcnow() + timedelta(minutes=lock_min)
+                    flash(msg(f'Too many failures. Locked for {lock_min} min.',
+                              f'失敗が多すぎます。{lock_min}分間ロックされました。'), 'danger')
+                    security.audit('login.locked', user=user,
+                                   detail={'failed_count': user.failed_login_attempts,
+                                           'lock_minutes': lock_min})
                 else:
-                    rem = MAX_ATTEMPTS - user.failed_login_attempts
-                    flash(msg(f'Invalid credentials. {rem} attempts left.',
-                              f'メールまたはパスワードが違います。残り{rem}回。'), 'danger')
+                    rem = 3 - user.failed_login_attempts
+                    flash(msg(f'Invalid credentials. {rem} attempts until lockout.',
+                              f'メールまたはパスワードが違います。あと{rem}回でロックされます。'), 'danger')
                 db.session.commit()
-                security.audit('login.fail', user=user, detail={'remaining': MAX_ATTEMPTS - user.failed_login_attempts})
+                security.audit('login.fail', user=user,
+                               detail={'failed_count': user.failed_login_attempts})
                 security.notify_login(user, success=False, reason='パスワード間違い')
+                # ブルートフォース検知
+                ip = request.headers.get('X-Forwarded-For',
+                                          request.remote_addr or '').split(',')[0].strip()
+                if security.detect_brute_force(ip):
+                    security.audit('login.brute_force_suspected',
+                                   detail={'ip': ip, 'email': email})
             else:
                 flash(msg('Invalid credentials.',
                           'メールアドレスまたはパスワードが違います。'), 'danger')
@@ -1118,6 +1178,8 @@ def admin_export_zip():
                     json.dumps(info, ensure_ascii=False, indent=2))
 
     buf.seek(0)
+    security.audit('admin.backup_download', user=g.current_user,
+                   detail={'format': 'zip', 'ts': ts})
     resp = make_response(buf.read())
     resp.headers['Content-Type'] = 'application/zip'
     resp.headers['Content-Disposition'] = f'attachment; filename=backup_{ts}.zip'
@@ -1378,7 +1440,7 @@ def _user_dict(u):
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 @app.route('/api/v1/auth/login', methods=['POST'])
-@limiter.limit('10 per minute')
+@limiter.limit('5 per minute; 30 per hour')
 def api_login():
     data = request.get_json() or {}
     email = data.get('email', '').strip().lower()
@@ -1401,11 +1463,22 @@ def api_login():
         })
     if user:
         user.failed_login_attempts += 1
-        if user.failed_login_attempts >= MAX_ATTEMPTS:
-            user.locked_until = datetime.utcnow() + timedelta(minutes=LOCKOUT_MINUTES)
+        lock_min = security.compute_lock_minutes(user.failed_login_attempts)
+        if lock_min > 0:
+            user.locked_until = datetime.utcnow() + timedelta(minutes=lock_min)
+            security.audit('login.locked', user=user,
+                           detail={'channel': 'api',
+                                   'failed_count': user.failed_login_attempts,
+                                   'lock_minutes': lock_min})
         db.session.commit()
-        security.audit('login.fail', user=user, detail={'channel': 'api'})
+        security.audit('login.fail', user=user,
+                       detail={'channel': 'api', 'failed_count': user.failed_login_attempts})
         security.notify_login(user, success=False, reason='パスワード間違い (API)')
+        ip = request.headers.get('X-Forwarded-For',
+                                  request.remote_addr or '').split(',')[0].strip()
+        if security.detect_brute_force(ip):
+            security.audit('login.brute_force_suspected',
+                           detail={'ip': ip, 'email': email, 'channel': 'api'})
     else:
         security.audit('login.unknown_email', detail={'email': email, 'channel': 'api'})
     return jsonify({'error': 'Invalid credentials'}), 401
@@ -1416,6 +1489,31 @@ def api_login():
 def api_refresh():
     uid = get_jwt_identity()
     return jsonify({'access_token': create_access_token(identity=uid)})
+
+
+@app.route('/api/v1/auth/logout', methods=['POST'])
+@jwt_required(verify_type=False)
+def api_logout():
+    """JWT を無効化 (ブラックリスト登録)。次回以降このトークンは拒否される。"""
+    from flask_jwt_extended import get_jwt
+    from models import TokenBlocklist
+    try:
+        payload = get_jwt()
+        jti = payload.get('jti')
+        exp_ts = payload.get('exp')
+        exp = datetime.fromtimestamp(exp_ts) if exp_ts else None
+        uid_str = get_jwt_identity()
+        uid = int(uid_str) if uid_str else None
+        db.session.add(TokenBlocklist(
+            jti=jti, user_id=uid, expires_at=exp, reason='logout',
+        ))
+        db.session.commit()
+        user = db.session.get(User, uid) if uid else None
+        security.audit('logout', user=user, detail={'channel': 'api'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+    return jsonify({'ok': True})
 
 
 @app.route('/api/v1/auth/me')
@@ -1597,6 +1695,8 @@ def api_v1_add_event():
                date=d, start_time=st, end_time=et)
     db.session.add(ev)
     db.session.commit()
+    security.audit('event.add', user=g.jwt_user, target_type='event', target_id=ev.id,
+                   detail={'title': ev.title, 'date': ev.date.isoformat()})
     discord_service.notify_event_added(ev)
     return jsonify(ev.to_dict()), 201
 
@@ -1606,6 +1706,9 @@ def api_v1_add_event():
 def api_v1_edit_event(eid):
     ev = db.session.get(Event, eid)
     if not ev: return jsonify({'error': 'Not found'}), 404
+    before = {'title': ev.title, 'date': ev.date.isoformat(),
+              'start_time': ev.start_time.strftime('%H:%M'),
+              'end_time':   ev.end_time.strftime('%H:%M')}
     data = request.get_json() or {}
     try:
         if 'date'       in data: ev.date       = datetime.strptime(data['date'],       '%Y-%m-%d').date()
@@ -1618,6 +1721,11 @@ def api_v1_edit_event(eid):
     if ev.start_time >= ev.end_time:
         return jsonify({'error': 'Start must be before end'}), 400
     db.session.commit()
+    after = {'title': ev.title, 'date': ev.date.isoformat(),
+             'start_time': ev.start_time.strftime('%H:%M'),
+             'end_time':   ev.end_time.strftime('%H:%M')}
+    security.audit('event.edit', user=g.jwt_user, target_type='event', target_id=ev.id,
+                   detail={'before': before, 'after': after})
     discord_service.notify_event_updated(ev)
     return jsonify(ev.to_dict())
 
@@ -1631,6 +1739,8 @@ def api_v1_delete_event(eid):
     date_snap  = ev.date.isoformat()
     db.session.delete(ev)
     db.session.commit()
+    security.audit('event.delete', user=g.jwt_user, target_type='event', target_id=eid,
+                   detail={'title': title_snap, 'date': date_snap})
     discord_service.notify_event_deleted(title_snap, date_snap)
     return jsonify({'ok': True})
 
@@ -1684,6 +1794,8 @@ def api_v1_update_attendance():
     else:
         att.partial_start = att.partial_end = None
     db.session.commit()
+    security.audit('attendance.update', user=user, target_type='event', target_id=eid,
+                   detail={'status': status})
     return jsonify({'ok': True})
 
 
@@ -1777,7 +1889,10 @@ def api_v1_add_user():
 def api_v1_edit_user(uid):
     u = db.session.get(User, uid)
     if not u: return jsonify({'error': 'Not found'}), 404
+    before = {'email': u.email, 'name': u.name, 'role': u.role,
+              'grade': u.grade, 'positions': u.positions}
     data = request.get_json() or {}
+    role_changed = False
     if 'email' in data:
         email = data['email'].strip().lower()
         if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
@@ -1792,12 +1907,21 @@ def api_v1_edit_user(uid):
             u.grade = None
         elif isinstance(g_in, str) and g_in.strip() in VALID_GRADES:
             u.grade = g_in.strip()
-        # それ以外は無視 (不正値)
     if 'user_class'       in data: u.user_class = data.get('user_class', '')
-    if 'role'             in data and data['role'] in VALID_ROLES: u.role = data['role']
+    if 'role' in data and data['role'] in VALID_ROLES:
+        if u.role != data['role']:
+            role_changed = True
+        u.role = data['role']
     if 'positions'        in data: u.positions       = [p for p in data['positions'] if p in VALID_POSITIONS]
     if 'auto_absent_days' in data: u.auto_absent_days = data['auto_absent_days']
     db.session.commit()
+    after = {'email': u.email, 'name': u.name, 'role': u.role,
+             'grade': u.grade, 'positions': u.positions}
+    security.audit(
+        'user.role_change' if role_changed else 'user.edit',
+        user=g.jwt_user, target_type='user', target_id=u.id,
+        detail={'before': before, 'after': after},
+    )
     return jsonify(_user_dict(u))
 
 
@@ -1808,6 +1932,8 @@ def api_v1_delete_user(uid):
     if not u: return jsonify({'error': 'Not found'}), 404
     if u.id == g.jwt_user.id: return jsonify({'error': 'Cannot delete yourself'}), 400
     u.is_active = False; db.session.commit()
+    security.audit('user.delete', user=g.jwt_user, target_type='user', target_id=u.id,
+                   detail={'email': u.email, 'name': u.name})
     return jsonify({'ok': True})
 
 
@@ -1950,14 +2076,89 @@ def admin_audit():
     page = max(1, request.args.get('page', 1, type=int))
     per_page = 50
     q = AuditLog.query.order_by(AuditLog.created_at.desc())
-    action_f = request.args.get('action', '').strip()
+
+    action_f   = request.args.get('action', '').strip()
+    severity_f = request.args.get('severity', '').strip()
+    user_f     = request.args.get('user', '').strip()
+    ip_f       = request.args.get('ip', '').strip()
+    from_f     = request.args.get('from', '').strip()
+    to_f       = request.args.get('to', '').strip()
+
     if action_f:
         q = q.filter(AuditLog.action.like(f'{action_f}%'))
+    if severity_f in ('info', 'warning', 'critical'):
+        q = q.filter(AuditLog.severity == severity_f)
+    if user_f:
+        like = f'%{user_f}%'
+        q = q.join(User, AuditLog.user_id == User.id).filter(
+            db.or_(User.name.like(like), User.email.like(like))
+        )
+    if ip_f:
+        q = q.filter(AuditLog.ip.like(f'{ip_f}%'))
+    if from_f:
+        try:
+            q = q.filter(AuditLog.created_at >= datetime.strptime(from_f, '%Y-%m-%d'))
+        except ValueError: pass
+    if to_f:
+        try:
+            q = q.filter(AuditLog.created_at < datetime.strptime(to_f, '%Y-%m-%d') + timedelta(days=1))
+        except ValueError: pass
+
     total = q.count()
     logs = q.offset((page - 1) * per_page).limit(per_page).all()
     return render_template('admin/audit.html',
                            logs=logs, page=page, per_page=per_page, total=total,
-                           action_filter=action_f)
+                           action_filter=action_f, severity_filter=severity_f,
+                           user_filter=user_f, ip_filter=ip_f,
+                           from_filter=from_f, to_filter=to_f)
+
+
+@app.route('/admin/audit/verify')
+@login_required('admin')
+def admin_audit_verify():
+    """監査ログの hash chain を検証する。改ざんがあれば壊れた ID 一覧を表示。"""
+    ok, broken = security.verify_audit_chain()
+    return jsonify({'ok': ok, 'broken_ids': broken,
+                    'total_checked': AuditLog.query.count()})
+
+
+@app.route('/admin/audit/export.csv')
+@login_required('admin')
+def admin_audit_export():
+    """監査ログを CSV でダウンロード (フィルタ条件を反映)。"""
+    q = AuditLog.query.order_by(AuditLog.created_at.desc())
+    action_f   = request.args.get('action', '').strip()
+    severity_f = request.args.get('severity', '').strip()
+    if action_f:
+        q = q.filter(AuditLog.action.like(f'{action_f}%'))
+    if severity_f in ('info', 'warning', 'critical'):
+        q = q.filter(AuditLog.severity == severity_f)
+
+    s = io.StringIO()
+    w = csv.writer(s)
+    w.writerow(['id', 'created_at', 'severity', 'action', 'user_id', 'user_email',
+                'target_type', 'target_id', 'ip', 'user_agent', 'detail',
+                'prev_hash', 'record_hash'])
+    for log in q.limit(10000).all():
+        w.writerow([
+            log.id,
+            log.created_at.isoformat() if log.created_at else '',
+            log.severity, log.action,
+            log.user_id or '',
+            log.user.email if log.user else '',
+            log.target_type or '', log.target_id or '',
+            log.ip or '', log.user_agent or '',
+            log.detail or '',
+            log.prev_hash or '', log.record_hash or '',
+        ])
+    security.audit('admin.audit_export', user=g.current_user,
+                   detail={'rows': q.count(), 'filter': {'action': action_f, 'severity': severity_f}})
+    resp = make_response('﻿' + s.getvalue())
+    resp.headers['Content-Type'] = 'text/csv; charset=utf-8'
+    resp.headers['Content-Disposition'] = (
+        f'attachment; filename=audit_log_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+    )
+    return resp
 
 
 # ── App Version (OTA) ─────────────────────────────────────────────────────────
