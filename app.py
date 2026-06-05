@@ -1496,6 +1496,41 @@ def api_onboarding():
 
 # ── Events ─────────────────────────────────────────────────────────────────────
 
+def _event_attendees_map(event_ids):
+    """イベントIDのリストに対し、{event_id: [{user_id, name, status, ...}, ...]} を返す。
+    出欠登録していないアクティブユーザーは absent 扱いで含める。"""
+    if not event_ids:
+        return {}
+    all_users = User.query.filter_by(is_active=True).order_by(User.name).all()
+    att_rows = Attendance.query.filter(Attendance.event_id.in_(event_ids)).all()
+    att_map = {(a.event_id, a.user_id): a for a in att_rows}
+    result = {eid: [] for eid in event_ids}
+    for eid in event_ids:
+        for u in all_users:
+            a = att_map.get((eid, u.id))
+            result[eid].append({
+                'user_id': u.id,
+                'name':    u.name,
+                'status':  a.status if a else 'absent',
+                'comment': a.comment if a else None,
+            })
+    return result
+
+
+def _attach_attendees(events_dicts, event_ids):
+    """events_dicts (to_dict 済み) に attendees と summary を追加。"""
+    att_map = _event_attendees_map(event_ids)
+    for d in events_dicts:
+        attendees = att_map.get(d['id'], [])
+        d['attendees'] = attendees
+        d['summary'] = {
+            'present': sum(1 for a in attendees if a['status'] == 'present'),
+            'partial': sum(1 for a in attendees if a['status'] == 'partial'),
+            'absent':  sum(1 for a in attendees if a['status'] == 'absent'),
+            'total':   len(attendees),
+        }
+
+
 @app.route('/api/v1/events')
 @jwt_role()
 def api_v1_events():
@@ -1510,8 +1545,9 @@ def api_v1_events():
         except ValueError: pass
     user = g.jwt_user
     att_map = {a.event_id: a for a in Attendance.query.filter_by(user_id=user.id).all()}
+    events = q.order_by(Event.date, Event.start_time).all()
     result = []
-    for ev in q.order_by(Event.date, Event.start_time).all():
+    for ev in events:
         d = ev.to_dict()
         a = att_map.get(ev.id)
         d['my_status']        = a.status       if a else 'absent'
@@ -1519,6 +1555,7 @@ def api_v1_events():
         d['my_partial_start'] = a.partial_start.strftime('%H:%M') if a and a.partial_start else None
         d['my_partial_end']   = a.partial_end.strftime('%H:%M')   if a and a.partial_end   else None
         result.append(d)
+    _attach_attendees(result, [e.id for e in events])
     return jsonify(result)
 
 
@@ -1539,6 +1576,7 @@ def api_v1_events_upcoming():
         d['my_status']  = a.status  if a else 'absent'
         d['my_comment'] = a.comment if a else None
         result.append(d)
+    _attach_attendees(result, [e.id for e in events])
     return jsonify(result)
 
 
