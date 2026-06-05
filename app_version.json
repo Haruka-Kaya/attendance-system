@@ -1,7 +1,7 @@
 {
-  "latest_version": "1.6.0",
-  "release_notes": "APK サイズ大幅軽量化 (54MB→18MB)。R8 minify + shrinkResources + split-per-abi (arm64) + obfuscate 有効化。iOS でもアップデート確認に対応 (TestFlight 誘導)。",
   "min_supported_version": "1.2.1",
-  "download_url": "https://github.com/Himanaraba/attendance-app/releases/download/v1.6.0/app-arm64-v8a-release.apk",
-  "released_at": "2026-05-27T07:56:27Z"
+  "download_url": "https://github.com/Himanaraba/attendance-app/releases/download/v1.7.0/app-arm64-v8a-release.apk",
+  "released_at": "2026-06-05T09:05:49Z",
+  "release_notes": "全員の出欠状況を表示 (イベント詳細で出席予定者リスト)。サーバー側セキュリティ大幅強化 (段階的アカウントロック・JWT 失効・監査ログ hash chain 改ざん検知)。JST タイムゾーン修正で「今日」判定が正しく動くように。",
+  "latest_version": "1.7.0"
 }
