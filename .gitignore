@@ -15,11 +15,14 @@ env/
 instance/
 attendance.db
 *.db-journal
+.schema_v*
 
 # Secrets - 絶対にコミットしない
 .env
 .env.*
+!.env.example
 .jwt_secret
+.secret_key
 secrets.json
 
 # Backups

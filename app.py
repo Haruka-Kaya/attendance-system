@@ -34,9 +34,36 @@ import security
 
 # ── App & Config ───────────────────────────────────────────────────────────────
 
+def _persistent_secret(env_var, filename):
+    """秘密鍵を取得する。環境変数が最優先、なければファイルに永続化した値を使う。
+
+    プロセスごとにランダム生成すると、gunicorn の複数ワーカーや Passenger の
+    複数プロセス間で署名が食い違い、セッション / JWT が不定期に無効化される。
+    全プロセスで必ず同じ値になるようにする。
+    """
+    if os.environ.get(env_var):
+        return os.environ[env_var]
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
+    if os.path.exists(path):
+        with open(path) as f:
+            existing = f.read().strip()
+        if existing:
+            return existing
+    # 同時起動したプロセスが競合しても、最初に書けた 1 つの値へ全員が揃うようにする
+    value = secrets.token_hex(32)
+    try:
+        fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    except FileExistsError:
+        with open(path) as f:
+            return f.read().strip()
+    with os.fdopen(fd, 'w') as f:
+        f.write(value)
+    return value
+
+
 app = Flask(__name__)
 app.config.update(
-    SECRET_KEY=os.environ.get('SECRET_KEY', secrets.token_hex(32)),
+    SECRET_KEY=_persistent_secret('SECRET_KEY', '.secret_key'),
     SQLALCHEMY_DATABASE_URI=os.environ.get('DATABASE_URL', 'sqlite:///attendance.db'),
     SQLALCHEMY_TRACK_MODIFICATIONS=False,
     PERMANENT_SESSION_LIFETIME=timedelta(days=30),
@@ -46,17 +73,7 @@ app.config.update(
 db.init_app(app)
 
 # JWT (Flutter モバイル用) — 再起動しても鍵が変わらないようファイルに永続化
-_jwt_key_file = os.path.join(os.path.dirname(__file__), '.jwt_secret')
-if os.environ.get('JWT_SECRET_KEY'):
-    _jwt_secret = os.environ['JWT_SECRET_KEY']
-elif os.path.exists(_jwt_key_file):
-    with open(_jwt_key_file) as _f:
-        _jwt_secret = _f.read().strip()
-else:
-    _jwt_secret = secrets.token_hex(32)
-    with open(_jwt_key_file, 'w') as _f:
-        _f.write(_jwt_secret)
-app.config['JWT_SECRET_KEY'] = _jwt_secret
+app.config['JWT_SECRET_KEY'] = _persistent_secret('JWT_SECRET_KEY', '.jwt_secret')
 app.config['JWT_ACCESS_TOKEN_EXPIRES']  = timedelta(hours=2)
 app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)
 # JWT ブラックリスト機能を有効化 (logout 時に jti 登録)
@@ -183,12 +200,37 @@ def auto_generate_events():
 
 _migrations_applied = False
 
+# 適用済みマーカー。CGI 実行ではリクエストごとにプロセスが作り直され、
+# メモリ上の _migrations_applied だけでは毎回マイグレーションが走ってしまう
+# (= 毎リクエストで ALTER TABLE と UPDATE を投げ、SQLite の書き込みロックを掴む)。
+# DB と同じ場所にマーカーを置き、スキーマ世代が変わった時だけ再実行する。
+_SCHEMA_VERSION = 3
+
+
+def _migration_marker_path():
+    uri = app.config['SQLALCHEMY_DATABASE_URI']
+    prefix = 'sqlite:///'
+    if uri.startswith(prefix):
+        db_path = uri[len(prefix):]
+        if db_path:
+            return os.path.join(os.path.dirname(os.path.abspath(db_path)),
+                                f'.schema_v{_SCHEMA_VERSION}')
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        f'.schema_v{_SCHEMA_VERSION}')
+
+
 @app.before_request
 def apply_migrations():
     global _migrations_applied
     if _migrations_applied:
         return
     _migrations_applied = True
+    marker = _migration_marker_path()
+    try:
+        if os.path.exists(marker):
+            return
+    except OSError:
+        pass
     # weekly_templates.is_auto が存在しない古いDBに対して追加
     _safe_add_column('weekly_templates', 'is_auto', 'BOOLEAN DEFAULT 0')
     _safe_add_column('events', 'description', 'TEXT DEFAULT ""')
@@ -212,6 +254,11 @@ def apply_migrations():
         db.session.commit()
     except Exception:
         db.session.rollback()
+    try:
+        with open(marker, 'w') as f:
+            f.write(str(_SCHEMA_VERSION))
+    except OSError:
+        pass  # 書けなくても動作は変わらない (毎回マイグレーションを試みるだけ)
 
 
 def _safe_add_column(table, column, col_def):
