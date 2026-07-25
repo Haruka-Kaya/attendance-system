@@ -1,7 +1,7 @@
 {
-  "release_notes": "ユーザー追加フォームのパスワード入力欄を削除。サーバーが自動生成する仮パスワードをコピー可能なダイアログで表示するように変更。本人が初回ログイン時に本パスワードを設定する設計に統一。",
-  "latest_version": "1.7.2",
-  "released_at": "2026-06-05T23:09:03Z",
-  "download_url": "https://github.com/Himanaraba/attendance-app/releases/download/v1.7.2/app-arm64-v8a-release.apk",
-  "min_supported_version": "1.2.1"
+  "download_url": "https://github.com/Haruka-Kaya/attendance-app/releases/download/v1.8.0/app-arm64-v8a-release.apk",
+  "min_supported_version": "1.8.0",
+  "released_at": "2026-07-25T16:29:50Z",
+  "release_notes": "サーバー移行: 旧VPSの停止に伴い接続先をさくらのレンタルサーバへ変更しました。このバージョンより前のアプリは接続できません。",
+  "latest_version": "1.8.0"
 }
