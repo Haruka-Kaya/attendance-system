@@ -1,0 +1,75 @@
+name: Deploy to sakura
+
+# 旧本番 (Coolify on Vultr) は git push で自動デプロイされていたが、
+# さくらのレンタルサーバへ移行して以降その仕組みが無くなったため、
+# 同等の「push したら反映される」動作をこのワークフローで再現する。
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - LICENSE
+      - NOTICE
+  workflow_dispatch:
+
+# 同時に走ると tar の展開が競合するので直列化する。
+# 進行中のデプロイは途中で切らず、完了させてから次を流す。
+concurrency:
+  group: deploy-sakura
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: SSH 鍵を配置
+        env:
+          SSH_KEY: ${{ secrets.SAKURA_SSH_KEY }}
+          HOST: ${{ secrets.SAKURA_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: 転送して展開
+        env:
+          TARGET: ${{ secrets.SAKURA_USER }}@${{ secrets.SAKURA_HOST }}
+        run: |
+          # .env / .secret_key / .jwt_secret / DB はサーバー側の値を残す。
+          # これらを上書きすると全ユーザーのセッションと JWT が無効になる。
+          tar czf /tmp/app.tgz \
+            --exclude=.git --exclude=.github --exclude=venv --exclude=instance \
+            --exclude=__pycache__ --exclude='*.pyc' \
+            --exclude=.env --exclude=.secret_key --exclude=.jwt_secret \
+            --exclude='.schema_v*' .
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
+            /tmp/app.tgz "$TARGET:/tmp/app-deploy.tgz"
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
+            "$TARGET" 'sh -s' < .github/deploy-remote.sh
+
+      - name: 動作検証
+        run: |
+          BASE=https://zenshin-robo.sakura.ne.jp/attendance
+          failed=0
+          for path in /login /api/v1/app/latest /static/css/style.css; do
+            code=$(curl -sS -m 30 -o /dev/null -w '%{http_code}' "$BASE$path")
+            echo "  $path -> HTTP $code"
+            case "$code" in
+              200|302) ;;
+              *) failed=1 ;;
+            esac
+          done
+          if [ "$failed" -ne 0 ]; then
+            echo "::error::デプロイ後の検証に失敗しました"
+            exit 1
+          fi
+
+      - name: 後始末
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
