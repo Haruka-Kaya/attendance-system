@@ -1,0 +1,5 @@
+# シェルスクリプトは必ず LF で取り出す。
+# CRLF が混ざると sh が行末の \r を引数の一部として扱い、
+# `tail -n 5<CR>` → "illegal offset" のような分かりにくい失敗になる。
+*.sh text eol=lf
+Procfile text eol=lf
