@@ -1,7 +1,7 @@
 {
-  "released_at": "2026-07-25T18:15:39Z",
-  "latest_version": "1.8.1",
+  "download_url": "https://github.com/Haruka-Kaya/attendance-app/releases/download/v1.8.2/app-arm64-v8a-release.apk",
+  "released_at": "2026-07-25T18:45:08Z",
+  "latest_version": "1.8.2",
   "min_supported_version": "1.8.1",
-  "release_notes": "リリース署名鍵を専用のものに変更しました。旧バージョンからの上書き更新はできないため、一度アンインストールしてから再インストールしてください。接続先は前バージョンと同じさくらのレンタルサーバです。",
-  "download_url": "https://github.com/Haruka-Kaya/attendance-app/releases/download/v1.8.1/app-arm64-v8a-release.apk"
+  "release_notes": "学年の選択肢にグローバル高校 (G1-G3) と ID学園 (ID1-ID3) を追加しました。v1.8.1 では該当する部員の学年が正しく表示されず、編集時に消える問題がありました。"
 }
