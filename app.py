@@ -121,7 +121,11 @@ LOCKOUT_MINUTES = int(os.environ.get('LOCKOUT_MINUTES', '30'))
 
 VALID_POSITIONS = {'tech', 'ops', 'teacher'}
 VALID_ROLES = {'user', 'manager', 'admin'}
-GRADE_OPTIONS = ['M1', 'M2', 'M3', 'H1', 'H2', 'H3', 'H4', 'OB']
+# M=中学 / H=高校 / G=グローバル高校 / ID=ID学園 / OB=卒業生。
+# 追加・変更したら Flutter 側 (_gradeOptions が users_admin_screen.dart と
+# onboarding_screen.dart にある) も必ず合わせること。
+GRADE_OPTIONS = ['M1', 'M2', 'M3', 'H1', 'H2', 'H3', 'H4',
+                 'G1', 'G2', 'G3', 'ID1', 'ID2', 'ID3', 'OB']
 VALID_GRADES = set(GRADE_OPTIONS)
 ROLE_LEVEL = {'user': 1, 'manager': 2, 'admin': 3}
 STATUS_LABEL_JA = {'present': '出席', 'absent': '欠席', 'partial': '部分参加'}
@@ -151,7 +155,8 @@ def generate_csrf():
 app.jinja_env.globals.update(csrf_token=generate_csrf, msg=msg, day_name=day_name,
                               zip=zip, enumerate=enumerate,
                               POSITION_LABELS=POSITION_LABELS,
-                              POSITION_COLORS=POSITION_COLORS)
+                              POSITION_COLORS=POSITION_COLORS,
+                              GRADE_OPTIONS=GRADE_OPTIONS)
 
 
 def validate_csrf():
@@ -245,12 +250,16 @@ def apply_migrations():
         db.create_all()
     except Exception:
         db.session.rollback()
-    # 既存の整数 grade を NULL にクリア (運用者が新形式 M1〜OB で再設定)
+    # 旧形式 (整数など) の grade を NULL にクリアする。
+    # 有効値は GRADE_OPTIONS から組み立てる。ここにリストを直書きすると
+    # 選択肢を増やした時に取り残され、追加した学年が消える。
     try:
-        db.session.execute(text(
-            "UPDATE users SET grade = NULL WHERE grade IS NOT NULL "
-            "AND grade NOT IN ('M1','M2','M3','H1','H2','H3','H4','OB')"
-        ))
+        placeholders = ', '.join(f':g{i}' for i in range(len(GRADE_OPTIONS)))
+        db.session.execute(
+            text('UPDATE users SET grade = NULL WHERE grade IS NOT NULL '
+                 f'AND grade NOT IN ({placeholders})'),
+            {f'g{i}': g for i, g in enumerate(GRADE_OPTIONS)},
+        )
         db.session.commit()
     except Exception:
         db.session.rollback()

@@ -48,7 +48,7 @@
               <label class="form-label small">{{ msg('Grade','学年') }}</label>
               <select name="grade" class="form-select">
                 <option value="">{{ msg('(none)','(未設定)') }}</option>
-                {% for g in ['M1','M2','M3','H1','H2','H3','H4','OB'] %}
+                {% for g in GRADE_OPTIONS %}
                 <option value="{{ g }}" {% if current_user.grade == g %}selected{% endif %}>{{ g }}</option>
                 {% endfor %}
               </select>
