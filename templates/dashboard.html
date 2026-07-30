@@ -4,53 +4,70 @@
 {% block content %}
 {% if auto_created > 0 %}
 <div class="alert alert-success alert-dismissible fade show py-2 mb-2" role="alert">
-  <i class="bi bi-magic"></i>
+  <i class="bi bi-magic" aria-hidden="true"></i>
   {{ msg(auto_created ~ ' event(s) were auto-generated from templates.',
          auto_created ~ '件の活動をテンプレートから自動生成しました。') }}
   <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 </div>
 {% endif %}
 
-<div class="row g-3 mb-3">
-  <!-- Stats cards -->
-  <div class="col-6 col-md-3">
-    <div class="card text-center border-primary h-100">
+<h1 class="page-title">
+  <i class="bi bi-house-fill" aria-hidden="true"></i>
+  {{ msg('Dashboard','ダッシュボード') }}
+</h1>
+
+{# 統計カード。出席・部分参加・欠席は「回答済み」として同格に静かに扱い、
+   強い視覚的重みは未回答（＝本人が行動すべきもの）にだけ与える。
+   全部を装飾すると pop-out が消える (DESIGN.md §2.2 / [W] §1.4)。
+   数値の色は専用クラス。Bootstrap の text-warning は白背景で 1.63:1 しかなく使えない。 #}
+<div class="row g-2 mb-3">
+  <div class="col-6 col-lg">
+    <div class="card text-center h-100">
       <div class="card-body py-3">
-        <div class="fs-2 fw-bold text-primary">{{ total_events }}</div>
-        <div class="text-muted small">{{ msg('Total Events','総活動') }}</div>
+        <div class="fs-2 fw-bold">{{ total_events }}</div>
+        <div class="text-body-secondary small">{{ msg('Total Events','総活動') }}</div>
       </div>
     </div>
   </div>
-  <div class="col-6 col-md-3">
-    <div class="card text-center border-success h-100">
+  <div class="col-6 col-lg">
+    <div class="card text-center h-100">
       <div class="card-body py-3">
-        <div class="fs-2 fw-bold text-success">{{ present }}</div>
-        <div class="text-muted small">{{ msg('Present','出席') }}</div>
+        <div class="fs-2 fw-bold status-present">{{ present }}</div>
+        <div class="text-body-secondary small">
+          <i class="bi bi-check-circle-fill" aria-hidden="true"></i> {{ msg('Present','出席') }}
+        </div>
       </div>
     </div>
   </div>
-  <div class="col-6 col-md-3">
-    <div class="card text-center border-warning h-100">
+  <div class="col-6 col-lg">
+    <div class="card text-center h-100">
       <div class="card-body py-3">
-        <div class="fs-2 fw-bold text-warning">{{ partial }}</div>
-        <div class="text-muted small">{{ msg('Partial','部分参加') }}</div>
+        <div class="fs-2 fw-bold status-partial">{{ partial }}</div>
+        <div class="text-body-secondary small">
+          <i class="bi bi-circle-half" aria-hidden="true"></i> {{ msg('Partial','部分参加') }}
+        </div>
       </div>
     </div>
   </div>
-  <div class="col-6 col-md-3">
-    <div class="card text-center border-danger h-100">
+  <div class="col-6 col-lg">
+    <div class="card text-center h-100">
       <div class="card-body py-3">
-        <div class="fs-2 fw-bold text-danger">{{ absent }}</div>
-        <div class="text-muted small">{{ msg('Absent','欠席') }}</div>
+        <div class="fs-2 fw-bold status-absent">{{ absent }}</div>
+        <div class="text-body-secondary small">
+          <i class="bi bi-dash-circle-fill" aria-hidden="true"></i> {{ msg('Absent','欠席') }}
+        </div>
       </div>
     </div>
   </div>
-  {# 未回答は欠席と別に数える。出席率の計算では未出席として扱われる。 #}
-  <div class="col-6 col-md-3">
-    <div class="card text-center border-secondary h-100">
+  {# 未回答は欠席と別に数える。出席率の計算では未出席として扱われる。
+     ここだけ塗りと枠で強調する（要対応だから） #}
+  <div class="col-12 col-lg">
+    <div class="card text-center h-100 chip-unanswered border-0">
       <div class="card-body py-3">
-        <div class="fs-2 fw-bold text-secondary">{{ unanswered }}</div>
-        <div class="text-muted small">{{ msg('No answer','未回答') }}</div>
+        <div class="fs-2 fw-bold">{{ unanswered }}</div>
+        <div class="small fw-semibold">
+          <i class="bi bi-question-circle-fill" aria-hidden="true"></i> {{ msg('No answer','未回答') }}
+        </div>
       </div>
     </div>
   </div>
@@ -61,7 +78,7 @@
 <div class="mb-2">
   {% for p in current_user.positions %}
   <span class="badge bg-{{ POSITION_COLORS.get(p,'secondary') }} me-1">
-    <i class="bi bi-people-fill"></i> {{ POSITION_LABELS.get(p, p) }}
+    <i class="bi bi-people-fill" aria-hidden="true"></i> {{ POSITION_LABELS.get(p, p) }}
   </span>
   {% endfor %}
 </div>
@@ -75,16 +92,16 @@
       <span class="fw-bold fs-5">{{ rate }}%</span>
     </div>
     <div class="progress" style="height:20px">
-      <div class="progress-bar bg-success" style="width:{{ [(present / total_events * 100)|round|int, 0]|max if total_events else 0 }}%"></div>
-      <div class="progress-bar bg-warning" style="width:{{ [(partial / total_events * 100)|round|int, 0]|max if total_events else 0 }}%"></div>
-      <div class="progress-bar bg-danger" style="width:{{ [(absent / total_events * 100)|round|int, 0]|max if total_events else 0 }}%"></div>
+      <div class="progress-bar" style="background:var(--status-present-fg);width:{{ [(present / total_events * 100)|round|int, 0]|max if total_events else 0 }}%"></div>
+      <div class="progress-bar" style="background:var(--status-partial-fg);width:{{ [(partial / total_events * 100)|round|int, 0]|max if total_events else 0 }}%"></div>
+      <div class="progress-bar" style="background:var(--status-absent-fg);width:{{ [(absent / total_events * 100)|round|int, 0]|max if total_events else 0 }}%"></div>
     </div>
     <div class="d-flex gap-3 mt-1 small text-muted flex-wrap">
-      <span><span class="badge bg-success">&nbsp;</span> {{ msg('Present','出席') }}</span>
-      <span><span class="badge bg-warning text-dark">&nbsp;</span> {{ msg('Partial','部分参加') }}</span>
-      <span><span class="badge bg-danger">&nbsp;</span> {{ msg('Absent','欠席') }}</span>
+      <span><span class="badge" style="background:var(--status-present-fg)">&nbsp;</span> {{ msg('Present','出席') }}</span>
+      <span><span class="badge" style="background:var(--status-partial-fg)">&nbsp;</span> {{ msg('Partial','部分参加') }}</span>
+      <span><span class="badge" style="background:var(--status-absent-fg)">&nbsp;</span> {{ msg('Absent','欠席') }}</span>
       {# バーの余白は未回答。出席率には未出席として反映される #}
-      <span><span class="badge bg-body-secondary border">&nbsp;</span> {{ msg('No answer','未回答') }}</span>
+      <span><span class="badge border" style="background:var(--status-unanswered-chip)">&nbsp;</span> {{ msg('No answer','未回答') }}</span>
     </div>
   </div>
 </div>
@@ -94,7 +111,7 @@
   <div class="col-12 col-lg-7">
     <div class="card h-100">
       <div class="card-header fw-semibold">
-        <i class="bi bi-calendar3"></i> {{ msg('Calendar','カレンダー') }}
+        <i class="bi bi-calendar3" aria-hidden="true"></i> {{ msg('Calendar','カレンダー') }}
       </div>
       <div class="card-body p-2">
         <div id="calendar"></div>
@@ -106,7 +123,7 @@
   <div class="col-12 col-lg-5">
     <div class="card h-100">
       <div class="card-header fw-semibold">
-        <i class="bi bi-calendar-day"></i>
+        <i class="bi bi-calendar-day" aria-hidden="true"></i>
         {{ msg("Today's Events","今日の活動") }}
         <span class="badge bg-secondary ms-1">{{ today.strftime('%Y/%m/%d') }}</span>
       </div>
@@ -114,16 +131,17 @@
         {% if today_events %}
           {% for ev in today_events %}
           {% set att = att_map.get(ev.id) %}
-          <div class="attendance-card card mb-2 border-2
-            {% if att and att.status == 'present' %}border-success
-            {% elif att and att.status == 'partial' %}border-warning
-            {% elif att and att.status == 'absent' %}border-danger
-            {% else %}border-secondary{% endif %}"
-            id="event-{{ ev.id }}">
+          {# 枠の色はステータス色トークンから。回答済み3種は同格に静かに、
+             未回答（att が無い）は既定の枠線のまま目立たせない #}
+          <div class="attendance-card card mb-2 border-2" id="event-{{ ev.id }}"
+            {% if att and att.status == 'present' %}style="border-color:var(--status-present-fg)"
+            {% elif att and att.status == 'partial' %}style="border-color:var(--status-partial-fg)"
+            {% elif att and att.status == 'absent' %}style="border-color:var(--status-absent-fg)"
+            {% endif %}>
             <div class="card-body p-2">
               <div class="fw-semibold">{{ ev.title }}</div>
               <div class="text-muted small mb-2">
-                <i class="bi bi-clock"></i>
+                <i class="bi bi-clock" aria-hidden="true"></i>
                 {{ ev.start_time.strftime('%H:%M') }}–{{ ev.end_time.strftime('%H:%M') }}
               </div>
               {% include '_attendance_form.html' %}
@@ -144,11 +162,11 @@
 <div class="card mt-3">
   <div class="card-header d-flex justify-content-between align-items-center">
     <span class="fw-semibold">
-      <i class="bi bi-clock-history"></i>
+      <i class="bi bi-clock-history" aria-hidden="true"></i>
       {{ msg('Recent Events (last 30 days)','直近30日間の活動') }}
     </span>
     <a href="{{ url_for('export_my_attendance') }}" class="btn btn-sm btn-outline-secondary">
-      <i class="bi bi-download"></i> CSV
+      <i class="bi bi-download" aria-hidden="true"></i> CSV
     </a>
   </div>
   <div class="card-body p-0">
@@ -157,11 +175,11 @@
       <table class="table table-hover table-sm mb-0 align-middle">
         <thead class="table-light">
           <tr>
-            <th>{{ msg('Date','日付') }}</th>
-            <th>{{ msg('Event','活動') }}</th>
-            <th>{{ msg('Time','時間') }}</th>
-            <th>{{ msg('Status','ステータス') }}</th>
-            <th>{{ msg('Action','操作') }}</th>
+            <th scope="col">{{ msg('Date','日付') }}</th>
+            <th scope="col">{{ msg('Event','活動') }}</th>
+            <th scope="col">{{ msg('Time','時間') }}</th>
+            <th scope="col">{{ msg('Status','ステータス') }}</th>
+            <th scope="col">{{ msg('Action','操作') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -175,18 +193,22 @@
             </td>
             <td>
               {% if att %}
-                <span class="badge
-                  {% if att.status == 'present' %}bg-success
-                  {% elif att.status == 'partial' %}bg-warning text-dark
-                  {% else %}bg-danger{% endif %}">
+                <span class="chip
+                  {% if att.status == 'present' %}chip-present
+                  {% elif att.status == 'partial' %}chip-partial
+                  {% else %}chip-absent{% endif %}">
+                  <i class="bi {% if att.status == 'present' %}bi-check-circle-fill
+                     {% elif att.status == 'partial' %}bi-circle-half
+                     {% else %}bi-dash-circle-fill{% endif %}" aria-hidden="true"></i>
                   {{ STATUS_LABEL_JA.get(att.status, att.status) }}
                 </span>
               {% else %}
-                <span class="badge bg-secondary">{{ msg('No answer','未回答') }}</span>
+                <span class="chip chip-unanswered"><i class="bi bi-question-circle" aria-hidden="true"></i> {{ msg('No answer','未回答') }}</span>
               {% endif %}
             </td>
             <td>
               <button class="btn btn-sm btn-outline-primary py-0 px-1"
+                      aria-label="{{ msg('Edit attendance','出欠を編集') }}"
                       onclick="openAttendanceModal({{ ev.id }}, '{{ ev.title }}',
                         '{{ ev.date }}', '{{ ev.start_time.strftime('%H:%M') }}',
                         '{{ ev.end_time.strftime('%H:%M') }}',
@@ -195,7 +217,7 @@
                         `{{ att.comment if att else '' }}`,
                         '{{ att.partial_start.strftime('%H:%M') if att and att.partial_start else '' }}',
                         '{{ att.partial_end.strftime('%H:%M') if att and att.partial_end else '' }}')">
-                <i class="bi bi-pencil-fill"></i>
+                <i class="bi bi-pencil-fill" aria-hidden="true"></i>
               </button>
             </td>
           </tr>
@@ -215,7 +237,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">
-          <i class="bi bi-pencil-fill"></i>
+          <i class="bi bi-pencil-fill" aria-hidden="true"></i>
           <span id="modalTitle"></span>
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -227,39 +249,39 @@
 
           <p class="text-muted small mb-3" id="modalDatetime"></p>
 
-          <div class="mb-3">
-            <label class="form-label fw-semibold">{{ msg('Status','ステータス') }}</label>
+          <fieldset class="mb-3">
+            <legend class="form-label fw-semibold">{{ msg('Status','ステータス') }}</legend>
             <div class="btn-group w-100" role="group">
               <input type="radio" class="btn-check" name="status" id="sPres" value="present" required>
               <label class="btn btn-outline-success" for="sPres">
-                <i class="bi bi-check-circle-fill"></i> {{ msg('Present','出席') }}
+                <i class="bi bi-check-circle-fill" aria-hidden="true"></i> {{ msg('Present','出席') }}
               </label>
               <input type="radio" class="btn-check" name="status" id="sPart" value="partial">
               <label class="btn btn-outline-warning" for="sPart">
-                <i class="bi bi-dash-circle-fill"></i> {{ msg('Partial','部分参加') }}
+                <i class="bi bi-dash-circle-fill" aria-hidden="true"></i> {{ msg('Partial','部分参加') }}
               </label>
               <input type="radio" class="btn-check" name="status" id="sAbs" value="absent">
               <label class="btn btn-outline-danger" for="sAbs">
-                <i class="bi bi-x-circle-fill"></i> {{ msg('Absent','欠席') }}
+                <i class="bi bi-x-circle-fill" aria-hidden="true"></i> {{ msg('Absent','欠席') }}
               </label>
             </div>
-          </div>
+          </fieldset>
 
           <div id="partialSection" class="mb-3 d-none">
             <div class="row g-2">
               <div class="col-6">
-                <label class="form-label small">{{ msg('Partial Start','開始') }}</label>
+                <label class="form-label small" for="partialStart">{{ msg('Partial Start','開始') }}</label>
                 <input type="time" name="partial_start" id="partialStart" class="form-control">
               </div>
               <div class="col-6">
-                <label class="form-label small">{{ msg('Partial End','終了') }}</label>
+                <label class="form-label small" for="partialEnd">{{ msg('Partial End','終了') }}</label>
                 <input type="time" name="partial_end" id="partialEnd" class="form-control">
               </div>
             </div>
           </div>
 
           <div class="mb-2">
-            <label class="form-label fw-semibold">{{ msg('Comment','コメント') }}</label>
+            <label class="form-label fw-semibold" for="modalComment">{{ msg('Comment','コメント') }}</label>
             <textarea name="comment" id="modalComment" class="form-control" rows="2"
                       placeholder="{{ msg('Optional comment...','備考（任意）') }}"></textarea>
           </div>
@@ -269,7 +291,7 @@
             {{ msg('Cancel','キャンセル') }}
           </button>
           <button type="submit" class="btn btn-primary">
-            <i class="bi bi-check-lg"></i> {{ msg('Save','保存') }}
+            <i class="bi bi-check-lg" aria-hidden="true"></i> {{ msg('Save','保存') }}
           </button>
         </div>
       </form>
@@ -297,7 +319,7 @@ document.addEventListener('DOMContentLoaded', function () {
     },
     eventContent: function (arg) {
       const status = arg.event.extendedProps.status;
-      const icons = { present: '✓', partial: '◑', absent: '✗' };
+      const icons = { present: '✓', partial: '◑', absent: '−', unanswered: '?' };
       return {
         html: `<span class="fc-event-dot"></span> ${icons[status] || ''} ${arg.event.title}`
       };

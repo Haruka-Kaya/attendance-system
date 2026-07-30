@@ -3,9 +3,9 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h4 class="mb-0"><i class="bi bi-layout-text-sidebar-reverse"></i> {{ msg('Weekly Templates','週次テンプレート') }}</h4>
+  <h1 class="page-title mb-0"><i class="bi bi-layout-text-sidebar-reverse" aria-hidden="true"></i> {{ msg('Weekly Templates','週次テンプレート') }}</h1>
   <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTplModal">
-    <i class="bi bi-plus-circle-fill"></i> {{ msg('Add Template','テンプレート追加') }}
+    <i class="bi bi-plus-circle-fill" aria-hidden="true"></i> {{ msg('Add Template','テンプレート追加') }}
   </button>
 </div>
 
@@ -16,11 +16,11 @@
         <table class="table table-hover align-middle mb-0">
           <thead class="table-light">
             <tr>
-              <th>{{ msg('Day','曜日') }}</th>
-              <th>{{ msg('Title','タイトル') }}</th>
-              <th>{{ msg('Time','時間') }}</th>
-              <th class="text-center">{{ msg('Auto','自動生成') }}</th>
-              <th>{{ msg('Actions','操作') }}</th>
+              <th scope="col">{{ msg('Day','曜日') }}</th>
+              <th scope="col">{{ msg('Title','タイトル') }}</th>
+              <th scope="col">{{ msg('Time','時間') }}</th>
+              <th scope="col" class="text-center">{{ msg('Auto','自動生成') }}</th>
+              <th scope="col">{{ msg('Actions','操作') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -33,7 +33,7 @@
               </td>
               <td class="text-center">
                 {% if t.is_auto %}
-                  <span class="badge bg-success"><i class="bi bi-magic"></i> ON</span>
+                  <span class="badge bg-success"><i class="bi bi-magic" aria-hidden="true"></i> ON</span>
                 {% else %}
                   <span class="badge bg-secondary">OFF</span>
                 {% endif %}
@@ -42,15 +42,19 @@
                 <div class="btn-group btn-group-sm">
                   {% if current_user.role == 'admin' %}
                   <button class="btn btn-outline-primary"
+                    aria-label="{{ msg('Edit','編集') }}: {{ t.title }}"
                     onclick="openEditTpl({{ t.id }}, {{ t.day_of_week }}, '{{ t.title }}',
                       '{{ t.start_time.strftime('%H:%M') }}', '{{ t.end_time.strftime('%H:%M') }}',
                       {{ 'true' if t.is_auto else 'false' }})">
-                    <i class="bi bi-pencil-fill"></i>
+                    <i class="bi bi-pencil-fill" aria-hidden="true"></i>
                   </button>
                   <form method="post" action="{{ url_for('admin_delete_template', tid=t.id) }}"
-                        onsubmit="return confirm('{{ msg('Delete template?','テンプレートを削除しますか？') }}')">
+                        data-confirm-title="{{ msg('Delete template','テンプレートを削除') }}"
+                        data-confirm="{{ msg('This weekly template will be deleted. Events already generated from it are kept.','この曜日テンプレートが削除されます。生成済みの活動は残ります。') }}"
+                        data-confirm-ok="{{ msg('Delete template','テンプレートを削除') }}"
+                        data-confirm-cancel="{{ msg('Keep template','削除しない') }}">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                    <button class="btn btn-outline-danger"><i class="bi bi-trash-fill"></i></button>
+                    <button class="btn btn-outline-danger" aria-label="{{ msg('Delete','削除') }}"><i class="bi bi-trash-fill" aria-hidden="true"></i></button>
                   </form>
                   {% endif %}
                 </div>
@@ -69,7 +73,7 @@
   <div class="col-12 col-md-4">
     <div class="card border-success">
       <div class="card-header bg-success text-white fw-semibold">
-        <i class="bi bi-magic"></i> {{ msg('Generate Events','活動生成') }}
+        <i class="bi bi-magic" aria-hidden="true"></i> {{ msg('Generate Events','活動生成') }}
       </div>
       <div class="card-body">
         <p class="text-muted small">
@@ -79,12 +83,12 @@
         <form method="post" action="{{ url_for('admin_generate_from_templates') }}">
           <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
           <div class="mb-3">
-            <label class="form-label fw-semibold">{{ msg('Start Date','開始日') }}</label>
-            <input type="date" name="start_date" class="form-control" required>
+            <label class="form-label fw-semibold" for="genStart">{{ msg('Start Date','開始日') }}</label>
+          <input type="date" name="start_date" id="genStart" class="form-control" required>
           </div>
           <div class="d-grid">
             <button type="submit" class="btn btn-success">
-              <i class="bi bi-calendar-plus-fill"></i> {{ msg('Generate (4 weeks)','4週間生成') }}
+              <i class="bi bi-calendar-plus-fill" aria-hidden="true"></i> {{ msg('Generate (4 weeks)','4週間生成') }}
             </button>
           </div>
         </form>
@@ -104,7 +108,7 @@
       <form method="post" action="{{ url_for('admin_add_template') }}">
         <div class="modal-body">
           <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-          {% include '_template_fields.html' %}
+          {% with fid = 'add' %}{% include '_template_fields.html' %}{% endwith %}
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ msg('Cancel','キャンセル') }}</button>
@@ -127,7 +131,7 @@
       <form method="post" id="editTplForm">
         <div class="modal-body">
           <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-          {% include '_template_fields.html' %}
+          {% with fid = 'edit' %}{% include '_template_fields.html' %}{% endwith %}
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ msg('Cancel','キャンセル') }}</button>

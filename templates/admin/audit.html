@@ -3,14 +3,14 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-  <h4 class="mb-0"><i class="bi bi-shield-check"></i> {{ msg('Audit Log','監査ログ') }}</h4>
+  <h1 class="page-title mb-0"><i class="bi bi-shield-check" aria-hidden="true"></i> {{ msg('Audit Log','監査ログ') }}</h1>
   <div class="d-flex gap-2">
     <button class="btn btn-sm btn-outline-secondary" type="button" id="btn-verify">
-      <i class="bi bi-check2-circle"></i> {{ msg('Verify integrity','改ざん検知') }}
+      <i class="bi bi-check2-circle" aria-hidden="true"></i> {{ msg('Verify integrity','改ざん検知') }}
     </button>
     <a class="btn btn-sm btn-outline-success"
        href="{{ url_for('admin_audit_export', action=action_filter, severity=severity_filter) }}">
-      <i class="bi bi-download"></i> CSV
+      <i class="bi bi-download" aria-hidden="true"></i> CSV
     </a>
     <span class="badge bg-secondary align-self-center">{{ total }} {{ msg('entries','件') }}</span>
   </div>
@@ -47,8 +47,8 @@
       <input type="date" name="to" class="form-control form-control-sm" value="{{ to_filter }}">
     </div>
     <div class="col-md-1 d-flex gap-1">
-      <button class="btn btn-sm btn-outline-primary flex-fill"><i class="bi bi-search"></i></button>
-      <a href="{{ url_for('admin_audit') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x"></i></a>
+      <button class="btn btn-sm btn-outline-primary flex-fill" aria-label="{{ msg('Search','検索') }}"><i class="bi bi-search" aria-hidden="true"></i></button>
+      <a href="{{ url_for('admin_audit') }}" class="btn btn-sm btn-outline-secondary" aria-label="{{ msg('Clear filters','絞り込みを解除') }}"><i class="bi bi-x" aria-hidden="true"></i></a>
     </div>
   </div>
 </form>
@@ -57,14 +57,14 @@
   <table class="table table-sm table-hover small align-middle">
     <thead class="table-light">
       <tr>
-        <th>{{ msg('Time','日時') }}</th>
-        <th>{{ msg('Sev','レベル') }}</th>
-        <th>{{ msg('Action','アクション') }}</th>
-        <th>{{ msg('User','ユーザー') }}</th>
-        <th>{{ msg('IP','IP') }}</th>
-        <th>{{ msg('Target','対象') }}</th>
-        <th>{{ msg('Detail','詳細') }}</th>
-        <th>hash</th>
+        <th scope="col">{{ msg('Time','日時') }}</th>
+        <th scope="col">{{ msg('Sev','レベル') }}</th>
+        <th scope="col">{{ msg('Action','アクション') }}</th>
+        <th scope="col">{{ msg('User','ユーザー') }}</th>
+        <th scope="col">{{ msg('IP','IP') }}</th>
+        <th scope="col">{{ msg('Target','対象') }}</th>
+        <th scope="col">{{ msg('Detail','詳細') }}</th>
+        <th scope="col">hash</th>
       </tr>
     </thead>
     <tbody>
@@ -90,7 +90,7 @@
         </td>
         <td class="small text-muted" style="max-width: 280px; overflow: hidden; text-overflow: ellipsis;"
             title="{{ log.detail or '' }}">{{ log.detail or '' }}</td>
-        <td class="text-muted" style="font-family: monospace; font-size: 10px;"
+        <td class="text-muted" style="font-family: monospace; font-size: .875rem;"
             title="prev: {{ log.prev_hash or '-' }}&#10;rec:  {{ log.record_hash or '-' }}">
           {{ (log.record_hash or '-')[:8] }}
         </td>
@@ -137,10 +137,10 @@ document.getElementById('btn-verify').addEventListener('click', async () => {
     const j = await r.json();
     if (j.ok) {
       result.className = 'alert alert-success mb-3';
-      result.innerHTML = `<i class="bi bi-shield-check"></i> 改ざんなし (${j.total_checked} 件チェック)`;
+      result.innerHTML = `<i class="bi bi-shield-check" aria-hidden="true"></i> 改ざんなし (${j.total_checked} 件チェック)`;
     } else {
       result.className = 'alert alert-danger mb-3';
-      result.innerHTML = `<i class="bi bi-exclamation-triangle"></i> 改ざんを検知: 壊れた ID = ${j.broken_ids.join(', ')}`;
+      result.innerHTML = `<i class="bi bi-exclamation-triangle" aria-hidden="true"></i> 改ざんを検知: 壊れた ID = ${j.broken_ids.join(', ')}`;
     }
   } catch (e) {
     result.className = 'alert alert-danger mb-3';

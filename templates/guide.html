@@ -2,18 +2,19 @@
 {% block title %}{{ msg('User Guide','使い方ガイド') }}{% endblock %}
 
 {% block content %}
+<div class="reading">
 <div class="row justify-content-center">
   <div class="col-12 col-lg-9">
-    <h3 class="mb-4"><i class="bi bi-question-circle-fill text-primary"></i>
+    <h1 class="page-title mb-4"><i class="bi bi-question-circle-fill text-primary" aria-hidden="true"></i>
       {{ msg('User Guide','使い方ガイド') }}
-    </h3>
+    </h1>
 
     <div class="accordion" id="guideAccordion">
 
       <div class="accordion-item">
         <h2 class="accordion-header">
           <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#g1">
-            <i class="bi bi-box-arrow-in-right me-2 text-primary"></i>
+            <i class="bi bi-box-arrow-in-right me-2 text-primary" aria-hidden="true"></i>
             {{ msg('Login & Password','ログイン・パスワード') }}
           </button>
         </h2>
@@ -34,7 +35,7 @@
       <div class="accordion-item">
         <h2 class="accordion-header">
           <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#g2">
-            <i class="bi bi-house-fill me-2 text-success"></i>
+            <i class="bi bi-house-fill me-2 text-success" aria-hidden="true"></i>
             {{ msg('Dashboard','ダッシュボード') }}
           </button>
         </h2>
@@ -64,7 +65,7 @@
       <div class="accordion-item">
         <h2 class="accordion-header">
           <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#g3">
-            <i class="bi bi-download me-2 text-info"></i>
+            <i class="bi bi-download me-2 text-info" aria-hidden="true"></i>
             {{ msg('CSV Export','CSVエクスポート') }}
           </button>
         </h2>
@@ -86,7 +87,7 @@
       <div class="accordion-item">
         <h2 class="accordion-header">
           <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#g4">
-            <i class="bi bi-gear-fill me-2 text-warning"></i>
+            <i class="bi bi-gear-fill me-2" aria-hidden="true"></i>
             {{ msg('Admin Features','管理者向け機能') }}
           </button>
         </h2>
@@ -113,11 +114,12 @@
 
     <div class="card mt-4 border-secondary">
       <div class="card-body">
-        <h6 class="fw-bold"><i class="bi bi-moon-stars-fill me-1"></i> {{ msg('Dark Mode','ダークモード') }}</h6>
+        <h6 class="fw-bold"><i class="bi bi-moon-stars-fill me-1" aria-hidden="true"></i> {{ msg('Dark Mode','ダークモード') }}</h6>
         <p class="mb-0 small">{{ msg('Click the moon icon in the top navigation bar to toggle dark mode. Your preference is saved in the browser.',
           '上部ナビバーの月アイコンでダークモードを切り替えられます。設定はブラウザに保存されます。') }}</p>
       </div>
     </div>
   </div>
+</div>
 </div>
 {% endblock %}

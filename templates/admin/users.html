@@ -3,10 +3,10 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h4 class="mb-0"><i class="bi bi-people-fill"></i> {{ msg('User Management','ユーザー管理') }}</h4>
+  <h1 class="page-title mb-0"><i class="bi bi-people-fill" aria-hidden="true"></i> {{ msg('User Management','ユーザー管理') }}</h1>
   {% if current_user.role == 'admin' %}
   <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">
-    <i class="bi bi-person-plus-fill"></i> {{ msg('Add User','ユーザー追加') }}
+    <i class="bi bi-person-plus-fill" aria-hidden="true"></i> {{ msg('Add User','ユーザー追加') }}
   </button>
   {% endif %}
 </div>
@@ -17,7 +17,7 @@
     <form class="row g-2 align-items-center" method="get">
       <div class="col-12 col-md-5">
         <div class="input-group">
-          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
           <input type="text" name="q" class="form-control" placeholder="{{ msg('Search name…','名前で検索…') }}"
                  value="{{ q }}">
         </div>
@@ -44,12 +44,12 @@
       <table class="table table-hover align-middle mb-0">
         <thead class="table-light">
           <tr>
-            <th>{{ msg('Name','名前') }}</th>
-            <th>{{ msg('Email','メール') }}</th>
-            <th>{{ msg('Grade/Class','学年/クラス') }}</th>
-            <th>{{ msg('Role','ロール') }}</th>
-            <th>{{ msg('Positions','役職') }}</th>
-            <th>{{ msg('Actions','操作') }}</th>
+            <th scope="col">{{ msg('Name','名前') }}</th>
+            <th scope="col">{{ msg('Email','メール') }}</th>
+            <th scope="col">{{ msg('Grade/Class','学年/クラス') }}</th>
+            <th scope="col">{{ msg('Role','ロール') }}</th>
+            <th scope="col">{{ msg('Positions','役職') }}</th>
+            <th scope="col">{{ msg('Actions','操作') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -59,7 +59,7 @@
               {{ u.name }}
               {% if u.must_change_password %}
               <span class="badge bg-warning text-dark ms-1" title="{{ msg('Must change password','PW変更要') }}">
-                <i class="bi bi-key-fill"></i>
+                <i class="bi bi-key-fill" aria-hidden="true"></i>
               </span>
               {% endif %}
             </td>
@@ -86,23 +86,29 @@
                 <button class="btn btn-outline-primary" title="{{ msg('Edit','編集') }}"
                   onclick="openEditModal({{ u.id }}, '{{ u.email }}', '{{ u.name }}',
                     '{{ u.grade or '' }}', '{{ u.user_class or '' }}',
-                    '{{ u.role }}', {{ u.positions|tojson }}, {{ u.auto_absent_days|tojson }})">
-                  <i class="bi bi-pencil-fill"></i>
+                    '{{ u.role }}', {{ u.positions|tojson }}, {{ u.auto_absent_days|tojson }})" aria-label="{{ msg('Edit','編集') }}">
+                  <i class="bi bi-pencil-fill" aria-hidden="true"></i>
                 </button>
                 {% endif %}
                 <form method="post" action="{{ url_for('admin_reset_password', uid=u.id) }}"
-                      onsubmit="return confirm('{{ msg('Reset password?','パスワードをリセットしますか？') }}')">
+                      data-confirm-title="{{ msg('Reset password','パスワードをリセット') }}"
+                      data-confirm="{{ msg('A temporary password will be issued and the current one will stop working.','仮パスワードが発行され、今のパスワードは使えなくなります。') }}"
+                      data-confirm-ok="{{ msg('Reset password','パスワードをリセット') }}"
+                      data-confirm-cancel="{{ msg('Keep password','リセットしない') }}">
                   <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                  <button class="btn btn-outline-warning" title="{{ msg('Reset PW','PW リセット') }}">
-                    <i class="bi bi-arrow-counterclockwise"></i>
+                  <button class="btn btn-outline-warning" title="{{ msg('Reset PW','PW リセット') }}" aria-label="{{ msg('Reset PW','PW リセット') }}">
+                    <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
                   </button>
                 </form>
                 {% if current_user.role == 'admin' %}
                 <form method="post" action="{{ url_for('admin_delete_user', uid=u.id) }}"
-                      onsubmit="return confirm('{{ msg('Deactivate this user?','このユーザーを無効にしますか？') }}')">
+                      data-confirm-title="{{ msg('Deactivate user','ユーザーを無効化') }}"
+                      data-confirm="{{ msg('This member will no longer be able to sign in and will disappear from the roster.','この部員はログインできなくなり、名簿から外れます。') }}"
+                      data-confirm-ok="{{ msg('Deactivate user','ユーザーを無効にする') }}"
+                      data-confirm-cancel="{{ msg('Keep user','無効にしない') }}">
                   <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-                  <button class="btn btn-outline-danger" title="{{ msg('Delete','削除') }}">
-                    <i class="bi bi-person-x-fill"></i>
+                  <button class="btn btn-outline-danger" title="{{ msg('Delete','削除') }}" aria-label="{{ msg('Delete','削除') }}">
+                    <i class="bi bi-person-x-fill" aria-hidden="true"></i>
                   </button>
                 </form>
                 {% endif %}
@@ -124,13 +130,13 @@
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title"><i class="bi bi-person-plus-fill"></i> {{ msg('Add User','ユーザー追加') }}</h5>
+        <h5 class="modal-title"><i class="bi bi-person-plus-fill" aria-hidden="true"></i> {{ msg('Add User','ユーザー追加') }}</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <form method="post" action="{{ url_for('admin_add_user') }}">
         <div class="modal-body">
           <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-          {% include '_user_fields.html' %}
+          {% with fid = 'add' %}{% include '_user_fields.html' %}{% endwith %}
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ msg('Cancel','キャンセル') }}</button>
@@ -146,13 +152,13 @@
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header bg-warning text-dark">
-        <h5 class="modal-title"><i class="bi bi-pencil-fill"></i> {{ msg('Edit User','ユーザー編集') }}</h5>
+        <h5 class="modal-title"><i class="bi bi-pencil-fill" aria-hidden="true"></i> {{ msg('Edit User','ユーザー編集') }}</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form method="post" id="editForm">
         <div class="modal-body">
           <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
-          {% include '_user_fields.html' with context %}
+          {% with fid = 'edit' %}{% include '_user_fields.html' with context %}{% endwith %}
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ msg('Cancel','キャンセル') }}</button>

@@ -1,9 +1,24 @@
 <!DOCTYPE html>
-<html lang="{{ lang }}" data-bs-theme="light">
+<html lang="{{ lang }}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}{{ msg('Attendance System','出欠管理') }}{% endblock %}</title>
+
+  {# FOUC 回避。**全 CSS より前**に置くこと。
+     <link rel="stylesheet"> の後ろに置くとそのスタイルシート取得でブロックされ、この手法は破綻する。
+     保存済みの手動選択があればそれを、無ければシステム設定に従う（3状態）。
+     matchMedia の change リスナーは付けない — 保存済みの手動選択を上書きしてしまう既知の罠。 #}
+  <script>
+    (function () {
+      var saved = null;
+      try { saved = localStorage.getItem('theme-preference'); } catch (e) { /* 無効化時は無視 */ }
+      var dark = saved ? saved === 'dark'
+                       : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
+    })();
+  </script>
+
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
@@ -13,53 +28,60 @@
 </head>
 <body>
 
+{# キーボード利用者がナビ全体を通過せず本文へ飛べるようにする (SC 2.4.1 Bypass Blocks / Level A) #}
+<a class="visually-hidden-focusable d-inline-block p-2 m-1 bg-body border rounded" href="#main">
+  {{ msg('Skip to main content','本文へスキップ') }}
+</a>
+
 {% if current_user %}
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
   <div class="container-fluid">
     <a class="navbar-brand fw-bold" href="{{ url_for('dashboard') }}">
-      <i class="bi bi-calendar-check-fill"></i>
+      <i class="bi bi-calendar-check-fill" aria-hidden="true"></i>
       {{ msg('Attendance','出欠管理') }}
     </a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
-      <span class="navbar-toggler-icon"></span>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav"
+            aria-controls="nav" aria-expanded="false"
+            aria-label="{{ msg('Toggle navigation','ナビゲーションを開閉') }}">
+      <span class="navbar-toggler-icon" aria-hidden="true"></span>
     </button>
     <div class="collapse navbar-collapse" id="nav">
       <ul class="navbar-nav me-auto">
         <li class="nav-item">
           <a class="nav-link" href="{{ url_for('dashboard') }}">
-            <i class="bi bi-house-fill"></i> {{ msg('Dashboard','ダッシュボード') }}
+            <i class="bi bi-house-fill" aria-hidden="true"></i> {{ msg('Dashboard','ダッシュボード') }}
           </a>
         </li>
         {% if current_user.role in ('manager','admin') %}
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-            <i class="bi bi-gear-fill"></i> {{ msg('Admin','管理') }}
+            <i class="bi bi-gear-fill" aria-hidden="true"></i> {{ msg('Admin','管理') }}
           </a>
           <ul class="dropdown-menu">
             <li><a class="dropdown-item" href="{{ url_for('admin_users') }}">
-              <i class="bi bi-people-fill"></i> {{ msg('Users','ユーザー管理') }}
+              <i class="bi bi-people-fill" aria-hidden="true"></i> {{ msg('Users','ユーザー管理') }}
             </a></li>
             <li><a class="dropdown-item" href="{{ url_for('admin_events') }}">
-              <i class="bi bi-calendar-event-fill"></i> {{ msg('Events','活動管理') }}
+              <i class="bi bi-calendar-event-fill" aria-hidden="true"></i> {{ msg('Events','活動管理') }}
             </a></li>
             <li><a class="dropdown-item" href="{{ url_for('admin_attendance') }}">
-              <i class="bi bi-clipboard-check-fill"></i> {{ msg('Attendance','出欠管理') }}
+              <i class="bi bi-clipboard-check-fill" aria-hidden="true"></i> {{ msg('Attendance','出欠管理') }}
             </a></li>
             <li><a class="dropdown-item" href="{{ url_for('admin_templates') }}">
-              <i class="bi bi-layout-text-sidebar-reverse"></i> {{ msg('Templates','テンプレート') }}
+              <i class="bi bi-layout-text-sidebar-reverse" aria-hidden="true"></i> {{ msg('Templates','テンプレート') }}
             </a></li>
             {% if current_user.role == 'admin' %}
             <li><a class="dropdown-item" href="{{ url_for('admin_audit') }}">
-              <i class="bi bi-shield-check"></i> {{ msg('Audit Log','監査ログ') }}
+              <i class="bi bi-shield-check" aria-hidden="true"></i> {{ msg('Audit Log','監査ログ') }}
             </a></li>
             {% endif %}
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" href="{{ url_for('admin_export_summary') }}">
-              <i class="bi bi-download"></i> {{ msg('Export Summary','サマリCSV') }}
+              <i class="bi bi-download" aria-hidden="true"></i> {{ msg('Export Summary','サマリCSV') }}
             </a></li>
             {% if current_user.role == 'admin' %}
-            <li><a class="dropdown-item text-danger fw-semibold" href="{{ url_for('admin_backup') }}">
-              <i class="bi bi-database-fill-down"></i> {{ msg('Full Backup','フルバックアップ') }}
+            <li><a class="dropdown-item" href="{{ url_for('admin_backup') }}">
+              <i class="bi bi-database-fill-down" aria-hidden="true"></i> {{ msg('Full Backup','フルバックアップ') }}
             </a></li>
             {% endif %}
           </ul>
@@ -67,15 +89,19 @@
         {% endif %}
         <li class="nav-item">
           <a class="nav-link" href="{{ url_for('guide') }}">
-            <i class="bi bi-question-circle-fill"></i> {{ msg('Guide','ガイド') }}
+            <i class="bi bi-question-circle-fill" aria-hidden="true"></i> {{ msg('Guide','ガイド') }}
           </a>
         </li>
       </ul>
 
       <ul class="navbar-nav align-items-center gap-1">
         <li class="nav-item">
-          <button class="btn btn-sm btn-outline-light" id="darkToggle" onclick="toggleDark()">
-            <i class="bi bi-moon-stars-fill" id="darkIcon"></i>
+          {# アイコンのみのボタンにはアクセシブル名が要る (SC 4.1.2 / Level A)。
+             状態は aria-pressed で伝える #}
+          <button class="btn btn-sm btn-outline-light" id="darkToggle" type="button"
+                  onclick="toggleTheme()" aria-pressed="false"
+                  aria-label="{{ msg('Toggle dark mode','ダークモードを切り替え') }}">
+            <i class="bi bi-moon-stars-fill" id="darkIcon" aria-hidden="true"></i>
           </button>
         </li>
         <li class="nav-item">
@@ -85,21 +111,23 @@
         </li>
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle text-white" href="#" data-bs-toggle="dropdown">
-            <i class="bi bi-person-circle"></i> {{ current_user.name }}
-            {% if current_user.role == 'admin' %}<span class="badge bg-danger ms-1">admin</span>
-            {% elif current_user.role == 'manager' %}<span class="badge bg-warning text-dark ms-1">mgr</span>
+            <i class="bi bi-person-circle" aria-hidden="true"></i> {{ current_user.name }}
+            {# 権限は破壊的操作ではないので赤・黄を使わない。
+               強い色は「要対応」と破壊的操作に予約する (§2.2 / [W] §1.4) #}
+            {% if current_user.role == 'admin' %}<span class="badge bg-light text-dark ms-1">admin</span>
+            {% elif current_user.role == 'manager' %}<span class="badge bg-light text-dark ms-1">mgr</span>
             {% endif %}
           </a>
           <ul class="dropdown-menu dropdown-menu-end">
             <li><a class="dropdown-item" href="{{ url_for('change_password') }}">
-              <i class="bi bi-key-fill"></i> {{ msg('Change Password','パスワード変更') }}
+              <i class="bi bi-key-fill" aria-hidden="true"></i> {{ msg('Change Password','パスワード変更') }}
             </a></li>
             <li><a class="dropdown-item" href="{{ url_for('export_my_attendance') }}">
-              <i class="bi bi-file-earmark-spreadsheet"></i> {{ msg('Export My CSV','自分のCSV') }}
+              <i class="bi bi-file-earmark-spreadsheet" aria-hidden="true"></i> {{ msg('Export My CSV','自分のCSV') }}
             </a></li>
             <li><hr class="dropdown-divider"></li>
-            <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
-              <i class="bi bi-box-arrow-right"></i> {{ msg('Logout','ログアウト') }}
+            <li><a class="dropdown-item" href="{{ url_for('logout') }}">
+              <i class="bi bi-box-arrow-right" aria-hidden="true"></i> {{ msg('Logout','ログアウト') }}
             </a></li>
           </ul>
         </li>
@@ -109,13 +137,14 @@
 </nav>
 {% endif %}
 
-<main class="container-fluid py-3">
+<main id="main" class="container-fluid py-3">
   {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
     {% for cat, text in messages %}
     <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
       {{ text }}
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"
+              aria-label="{{ msg('Close','閉じる') }}"></button>
     </div>
     {% endfor %}
   {% endif %}
@@ -124,27 +153,86 @@
   {% block content %}{% endblock %}
 </main>
 
+{# 破壊的操作の確認 (DESIGN.md §7.3)。
+   native confirm() はボタンが OK/キャンセル固定で「何が起きるか」を要約できず、
+   初期フォーカスも制御できないため置き換えた。
+   - ボタンラベルは結果を要約する語にする（NN/g。Yes/No にしない）
+   - 初期フォーカスは破壊しない方に置く（W3C ARIA APG）
+   - aria-modal は「外側を視覚的に遮る」ことがセットの要件。Bootstrap の backdrop が担う #}
+<div class="modal fade" id="confirmDialog" tabindex="-1"
+     aria-labelledby="confirmTitle" aria-describedby="confirmBody">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 class="modal-title h5" id="confirmTitle"></h2>
+      </div>
+      <div class="modal-body"><p class="mb-0" id="confirmBody"></p></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="confirmCancel"
+                data-bs-dismiss="modal"></button>
+        <button type="button" class="btn btn-danger" id="confirmOk"></button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 <script>
 const CSRF_TOKEN = '{{ csrf_token() }}';
 
-function toggleDark() {
+// テーマの適用自体は <head> のブロッキングスクリプトが済ませている。
+// ここではボタンの見た目と状態表示だけを担当する。
+function syncThemeButton() {
+  const dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+  const icon = document.getElementById('darkIcon');
+  const btn  = document.getElementById('darkToggle');
+  if (icon) icon.className = dark ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+  if (btn)  btn.setAttribute('aria-pressed', dark ? 'true' : 'false');
+}
+
+function toggleTheme() {
   const html = document.documentElement;
   const dark = html.getAttribute('data-bs-theme') !== 'dark';
   html.setAttribute('data-bs-theme', dark ? 'dark' : 'light');
-  document.getElementById('darkIcon').className =
-    dark ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
-  localStorage.setItem('dark', dark ? '1' : '0');
+  try { localStorage.setItem('theme-preference', dark ? 'dark' : 'light'); } catch (e) { /* 無視 */ }
+  syncThemeButton();
 }
 
-(function() {
-  if (localStorage.getItem('dark') === '1') {
-    document.documentElement.setAttribute('data-bs-theme', 'dark');
-    const ic = document.getElementById('darkIcon');
-    if (ic) ic.className = 'bi bi-sun-fill';
-  }
+syncThemeButton();
+
+// data-confirm を持つフォームの送信を横取りして確認ダイアログを出す (DESIGN.md §7.3)
+(function () {
+  const el = document.getElementById('confirmDialog');
+  if (!el) return;
+  const dialog = new bootstrap.Modal(el);
+  const okBtn     = document.getElementById('confirmOk');
+  const cancelBtn = document.getElementById('confirmCancel');
+  let pendingForm = null;
+
+  document.addEventListener('submit', function (e) {
+    const form = e.target;
+    if (!form.dataset.confirm || form.dataset.confirmed === '1') return;
+    e.preventDefault();
+    pendingForm = form;
+    document.getElementById('confirmTitle').textContent = form.dataset.confirmTitle || '';
+    document.getElementById('confirmBody').textContent  = form.dataset.confirm;
+    okBtn.textContent     = form.dataset.confirmOk     || '{{ msg("Continue","続行") }}';
+    cancelBtn.textContent = form.dataset.confirmCancel || '{{ msg("Cancel","やめる") }}';
+    dialog.show();
+  });
+
+  // 初期フォーカスは破壊しない側。スクリプトによる focus() は :focus-visible に
+  // マッチしないことがあるため、CSS 側でリングを明示している
+  el.addEventListener('shown.bs.modal', function () { cancelBtn.focus(); });
+
+  okBtn.addEventListener('click', function () {
+    if (!pendingForm) return;
+    pendingForm.dataset.confirmed = '1';
+    dialog.hide();
+    pendingForm.submit();
+  });
 })();
 </script>
 {% block scripts %}{% endblock %}

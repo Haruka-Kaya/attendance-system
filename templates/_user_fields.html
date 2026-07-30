@@ -1,16 +1,25 @@
-{# Shared form fields for add/edit user modals #}
+{# 追加/編集モーダル共通のユーザー入力欄。
+
+   呼び出し側は必ず {% with fid = 'add' %} のように一意な接頭辞を渡すこと。
+   1ページに2回 include されるため、接頭辞が無いと id が重複し
+   ラベルのクリックが別モーダルの入力を操作してしまう。 #}
+{% set fid = fid | default('user') %}
 <div class="row g-3">
   <div class="col-md-6">
-    <label class="form-label fw-semibold">{{ msg('Email','メールアドレス') }} <span class="text-danger">*</span></label>
-    <input type="email" name="email" class="form-control" required>
+    <label class="form-label fw-semibold" for="{{ fid }}-email">
+      {{ msg('Email','メールアドレス') }} <span class="text-danger" aria-hidden="true">*</span>
+    </label>
+    <input type="email" name="email" id="{{ fid }}-email" class="form-control" required>
   </div>
   <div class="col-md-6">
-    <label class="form-label fw-semibold">{{ msg('Name','名前') }} <span class="text-danger">*</span></label>
-    <input type="text" name="name" class="form-control" required>
+    <label class="form-label fw-semibold" for="{{ fid }}-name">
+      {{ msg('Name','名前') }} <span class="text-danger" aria-hidden="true">*</span>
+    </label>
+    <input type="text" name="name" id="{{ fid }}-name" class="form-control" required>
   </div>
   <div class="col-md-3">
-    <label class="form-label fw-semibold">{{ msg('Grade','学年') }}</label>
-    <select name="grade" class="form-select">
+    <label class="form-label fw-semibold" for="{{ fid }}-grade">{{ msg('Grade','学年') }}</label>
+    <select name="grade" id="{{ fid }}-grade" class="form-select">
       <option value="">{{ msg('(none)', '(未設定)') }}</option>
       {% for g in GRADE_OPTIONS %}
       <option value="{{ g }}">{{ g }}</option>
@@ -18,51 +27,58 @@
     </select>
   </div>
   <div class="col-md-3">
-    <label class="form-label fw-semibold">{{ msg('Class','クラス') }}</label>
-    <input type="text" name="user_class" class="form-control" maxlength="20">
+    <label class="form-label fw-semibold" for="{{ fid }}-class">{{ msg('Class','クラス') }}</label>
+    <input type="text" name="user_class" id="{{ fid }}-class" class="form-control" maxlength="20">
   </div>
   <div class="col-md-12">
-    <label class="form-label fw-semibold">{{ msg('Discord User ID','Discord ID') }}
-      <small class="text-muted">{{ msg('(optional, for role sync)','(任意・ロール連携用)') }}</small>
+    <label class="form-label fw-semibold" for="{{ fid }}-discord">
+      {{ msg('Discord User ID','Discord ID') }}
+      <small class="text-body-secondary">{{ msg('(optional, for role sync)','(任意・ロール連携用)') }}</small>
     </label>
-    <input type="text" name="discord_id" class="form-control" maxlength="32"
-           pattern="[0-9]*" placeholder="例: 123456789012345678">
+    <input type="text" name="discord_id" id="{{ fid }}-discord" class="form-control" maxlength="32"
+           pattern="[0-9]*" placeholder="{{ msg('e.g. 123456789012345678','例: 123456789012345678') }}">
   </div>
   <div class="col-md-6">
-    <label class="form-label fw-semibold">{{ msg('Role','ロール') }}</label>
-    <div class="btn-group w-100" role="group">
-      {% for r, lbl in [('user','User'),('manager','Manager'),('admin','Admin')] %}
-      <input type="radio" class="btn-check" name="role" id="role_{{ r }}_{{ loop.index }}" value="{{ r }}"
-             {% if r == 'user' %}checked{% endif %}>
-      <label class="btn btn-outline-secondary" for="role_{{ r }}_{{ loop.index }}">{{ lbl }}</label>
-      {% endfor %}
-    </div>
+    <fieldset>
+      <legend class="form-label fw-semibold">{{ msg('Role','ロール') }}</legend>
+      <div class="btn-group w-100" role="group">
+        {% for r, lbl in [('user','User'),('manager','Manager'),('admin','Admin')] %}
+        <input type="radio" class="btn-check" name="role" id="{{ fid }}-role-{{ r }}" value="{{ r }}"
+               {% if r == 'user' %}checked{% endif %}>
+        <label class="btn btn-outline-secondary" for="{{ fid }}-role-{{ r }}">{{ lbl }}</label>
+        {% endfor %}
+      </div>
+    </fieldset>
   </div>
   <div class="col-12">
-    <label class="form-label fw-semibold">{{ msg('Team / Role','班・役職') }}</label>
-    <div class="d-flex gap-3 flex-wrap">
-      {% for pos, label in [('tech','技術班'),('ops','運営班'),('teacher','顧問')] %}
-      <div class="form-check form-check-inline">
-        <input class="form-check-input" type="checkbox" name="positions" value="{{ pos }}"
-               id="pos_{{ pos }}_{{ loop.index }}">
-        <label class="form-check-label fw-semibold text-{{ POSITION_COLORS[pos] }}"
-               for="pos_{{ pos }}_{{ loop.index }}">
-          <i class="bi bi-people-fill"></i> {{ label }}
-        </label>
+    <fieldset>
+      <legend class="form-label fw-semibold">{{ msg('Team / Role','班・役職') }}</legend>
+      <div class="d-flex gap-3 flex-wrap">
+        {% for pos, label in [('tech','技術班'),('ops','運営班'),('teacher','顧問')] %}
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="checkbox" name="positions" value="{{ pos }}"
+                 id="{{ fid }}-pos-{{ pos }}">
+          <label class="form-check-label fw-semibold text-{{ POSITION_COLORS[pos] }}"
+                 for="{{ fid }}-pos-{{ pos }}">
+            <i class="bi bi-people-fill" aria-hidden="true"></i> {{ label }}
+          </label>
+        </div>
+        {% endfor %}
       </div>
-      {% endfor %}
-    </div>
+    </fieldset>
   </div>
   <div class="col-12">
-    <label class="form-label fw-semibold">{{ msg('Auto Absent Days','自動欠席曜日') }}</label>
-    <div class="d-flex gap-2 flex-wrap">
-      {% for i in range(7) %}
-      <div class="form-check form-check-inline">
-        <input class="form-check-input" type="checkbox" name="auto_absent_days"
-               value="{{ i }}" id="day_{{ i }}_{{ loop.index }}">
-        <label class="form-check-label" for="day_{{ i }}_{{ loop.index }}">{{ day_name(i) }}</label>
+    <fieldset>
+      <legend class="form-label fw-semibold">{{ msg('Auto Absent Days','自動欠席曜日') }}</legend>
+      <div class="d-flex gap-2 flex-wrap">
+        {% for i in range(7) %}
+        <div class="form-check form-check-inline">
+          <input class="form-check-input" type="checkbox" name="auto_absent_days"
+                 value="{{ i }}" id="{{ fid }}-day-{{ i }}">
+          <label class="form-check-label" for="{{ fid }}-day-{{ i }}">{{ day_name(i) }}</label>
+        </div>
+        {% endfor %}
       </div>
-      {% endfor %}
-    </div>
+    </fieldset>
   </div>
 </div>

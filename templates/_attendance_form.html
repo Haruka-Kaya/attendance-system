@@ -20,6 +20,6 @@
     {% endfor %}
   </div>
   {% if att and att.comment %}
-  <span class="text-muted small"><i class="bi bi-chat-fill"></i> {{ att.comment[:30] }}</span>
+  <span class="text-muted small"><i class="bi bi-chat-fill" aria-hidden="true"></i> {{ att.comment[:30] }}</span>
   {% endif %}
 </form>

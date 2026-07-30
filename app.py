@@ -140,10 +140,23 @@ STATUS_UNANSWERED = 'unanswered'
 SETTABLE_STATUSES = ('present', 'absent', 'partial')
 STATUS_LABEL_JA = {'present': '出席', 'absent': '欠席', 'partial': '部分参加',
                    STATUS_UNANSWERED: '未回答'}
+
+# カレンダーのイベント色。DESIGN.md §2.4 の確定値（ライト用の前景色）。
+# CSS ではなく FullCalendar へ JSON で渡すためここに持つ。
+# 値を変えるときは DESIGN.md §2.4 を先に更新し、コントラストを再検証すること。
+CALENDAR_STATUS_COLORS = {
+    'present':          '#207F40',
+    'partial':          '#9B612E',
+    'absent':           '#BA4643',
+    STATUS_UNANSWERED:  '#696E7A',
+}
 DAY_NAMES_JA = ['月', '火', '水', '木', '金', '土', '日']
 DAY_NAMES_EN = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 POSITION_LABELS = {'tech': '技術班', 'ops': '運営班', 'teacher': '顧問'}
-POSITION_COLORS = {'tech': 'primary', 'ops': 'success', 'teacher': 'warning'}
+# Bootstrap の warning (#ffc107) は白文字で 1.63:1、白背景の text-warning も 1.63:1 しかなく
+# SC 1.4.3 (AA) を満たさない。班は状態でも破壊的操作でもないので、
+# コントラストの取れる色に置き換える (DESIGN.md §2.2 / §2.3)。
+POSITION_COLORS = {'tech': 'primary', 'ops': 'success', 'teacher': 'dark'}
 
 # ── Jinja helpers ──────────────────────────────────────────────────────────────
 
@@ -1381,9 +1394,10 @@ def api_events():
     for ev in q.order_by(Event.date, Event.start_time).all():
         d = ev.to_dict()
         status = att_map.get(ev.id, STATUS_UNANSWERED)
+        # 色は DESIGN.md §2.4 の確定値。sRGB 変換後にコントラストを検証済みで、
+        # 白背景・チップ背景の両方に対し 4.5:1 以上ある。
         # 未回答は既定の中立色（末尾の get 既定値）に落ちる。欠席の赤にはしない。
-        d['color'] = {'present': '#28a745', 'partial': '#ffc107', 'absent': '#dc3545'}.get(
-            status, '#6c757d')
+        d['color'] = CALENDAR_STATUS_COLORS.get(status, CALENDAR_STATUS_COLORS['unanswered'])
         d['extendedProps'] = {'status': status}
         result.append(d)
     return jsonify(result)

@@ -1,87 +1,282 @@
-/* ── Global Font & Size ───────────────────────────────── */
+/* ==========================================================================
+   出欠管理システム — デザイントークンと共通スタイル
+
+   基準は DESIGN.md。数値を変えるときは必ず DESIGN.md の該当節を先に読むこと。
+   「なんとなく良さそう」で色やサイズを変えない。
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. トークン（DESIGN.md §1.3 / §2.4 / §4.2）
+
+   値は oklch で著者定義し、sRGB 変換後に WCAG コントラスト比を計算して検証済み。
+   ライト/ダークとも本文 15:1 前後、補助テキスト 4.9:1 以上、
+   フォーカスリング 4.9:1 以上（SC 1.4.11 の 3:1 を満たす）。
+   -------------------------------------------------------------------------- */
 :root {
-  --bs-font-sans-serif: 'Noto Sans JP', 'Helvetica Neue', Arial, sans-serif;
-  --bs-body-font-size: 0.875rem;   /* 14px (Bootstrapデフォルト16px → 少し小さめ) */
+  /* Baseline Widely (2022-01)。UA の canvas・スクロールバー・フォーム既定色に効く。
+     light-dark() は Baseline Newly (Widely 到達は最速 2026-11) なので単独依存しない */
+  color-scheme: light dark;
+
+  --bg:        #FFFFFF;
+  --surface:   #FFFFFF;
+  --surface-2: #F6F7F9;
+  --border:    #DCDEE1;
+  --fg:        #24262A;
+  --fg-muted:  #696C72;
+  --ring:      #2971C6;
+
+  /* 状態と無関係な一時的強調。ステータス色を流用しないための独立トークン (§1.3) */
+  --highlight-flash: #D8EBFB;
+
+  /* ステータス色 (§2.4)。前景はチップ上・ページ上とも 4.5:1 以上を検証済み */
+  --status-present-fg:      #207F40;  --status-present-chip:    #E9F6EB;
+  --status-partial-fg:      #9B612E;  --status-partial-chip:    #FEEFE3;
+  --status-absent-fg:       #BA4643;  --status-absent-chip:     #FDECEA;
+  --status-unanswered-fg:   #696E7A;  --status-unanswered-chip: #F0F2F4;
+
+  /* 角丸は単一の --radius から倍率で導出 (§4.2)。
+     px オフセット版 (calc(var(--radius) - 4px)) は --radius:0 で負値になるので使わない */
+  --radius:     0.625rem;
+  --radius-sm:  calc(var(--radius) * 0.6);
+  --radius-md:  calc(var(--radius) * 0.8);
+  --radius-lg:  var(--radius);
+  --radius-xl:  calc(var(--radius) * 1.4);
+
+  /* 読み物領域の行長。全角40文字相当 (§3.2、WCAG SC 1.4.8 AAA 帰属) */
+  --reading-width: 42em;
+}
+
+/* ダーク。手動指定 (data-bs-theme) がシステム設定に必ず勝つようにする。
+   :root[data-bs-theme=...] は詳細度 (0,1,1) で Bootstrap の (0,1,0) を上回る */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-bs-theme="light"]) {
+    --bg:        #131416;
+    --surface:   #1E1F22;
+    --surface-2: #2A2B2E;
+    --border:    #3E4044;
+    --fg:        #E6E8EB;
+    --fg-muted:  #A2A5AA;
+    --ring:      #64A1EE;
+    --highlight-flash: #233849;
+    --status-present-fg:      #419B5A;  --status-present-chip:    #18271B;
+    --status-partial-fg:      #B97C2B;  --status-partial-chip:    #2D2011;
+    --status-absent-fg:       #DA645E;  --status-absent-chip:     #331C1A;
+    --status-unanswered-fg:   #838A96;  --status-unanswered-chip: #212326;
+  }
+}
+:root[data-bs-theme="dark"] {
+  --bg:        #131416;
+  --surface:   #1E1F22;
+  --surface-2: #2A2B2E;
+  --border:    #3E4044;
+  --fg:        #E6E8EB;
+  --fg-muted:  #A2A5AA;
+  --ring:      #64A1EE;
+  --highlight-flash: #233849;
+  --status-present-fg:      #419B5A;  --status-present-chip:    #18271B;
+  --status-partial-fg:      #B97C2B;  --status-partial-chip:    #2D2011;
+  --status-absent-fg:       #DA645E;  --status-absent-chip:     #331C1A;
+  --status-unanswered-fg:   #838A96;  --status-unanswered-chip: #212326;
+}
+
+/* --------------------------------------------------------------------------
+   2. Bootstrap への橋渡し
+
+   Bootstrap のコンポーネントが自前のトークンを見るので、そこへ流し込む。
+   このファイルは bootstrap.min.css より後に読み込まれる前提。
+   -------------------------------------------------------------------------- */
+:root {
+  /* デジタル庁デザインシステムの規定どおり4トークン (§3.3)。
+     Hiragino / Yu Gothic を並べる書き方は DADS の規定ではないので入れない。
+     Helvetica Neue / Arial は和文グリフを持たず実質機能しないため外した */
+  --bs-font-sans-serif: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* 本文 16px。DADS は「14 CSS px 未満は原則として許容されません」とし、
+     本文・見出しの帯を 16-45px としている (§3.1) */
+  --bs-body-font-size: 1rem;
+  --bs-body-bg:        var(--bg);
+  --bs-body-color:     var(--fg);
+  --bs-border-color:   var(--border);
+  --bs-secondary-color: var(--fg-muted);
+  --bs-emphasis-color: var(--fg);
+
+  --bs-border-radius:    var(--radius-md);
+  --bs-border-radius-sm: var(--radius-sm);
+  --bs-border-radius-lg: var(--radius-lg);
+  --bs-border-radius-xl: var(--radius-xl);
 }
 
 body {
   font-family: var(--bs-font-sans-serif);
   font-size: var(--bs-body-font-size);
+  /* 一般的な Web の本文帯。DADS の離散スケールから選択 (§3.2)。
+     150% が最低値で、160% も本文帯として提示されている。
+     どちらが最適かの根拠は存在しない（DESIGN.md §8-1 の未回答項目） */
+  line-height: 1.6;
   min-height: 100vh;
+  background: var(--bg);
+  color: var(--fg);
 }
 
-/* 見出しも少し締める */
-h1 { font-size: 1.6rem; }
-h2 { font-size: 1.4rem; }
+/* 見出し。大きな文字は 140% (§3.2) */
+h1, h2, h3, h4, h5, h6 { line-height: 1.4; font-weight: 700; }
+h1 { font-size: 1.75rem; }
+h2 { font-size: 1.5rem; }
 h3 { font-size: 1.25rem; }
-h4 { font-size: 1.1rem; }
+h4 { font-size: 1.125rem; }
 h5 { font-size: 1rem; }
+h6 { font-size: 1rem; }
 
+/* ページ見出し。各ページに h1 を1つ置く（見出しレベルを飛ばさない） */
+.page-title {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+/* 読み物領域だけ行長を絞る。管理テーブルはデータ密度優先で全幅のまま */
+.reading { max-width: var(--reading-width); }
+
+/* --------------------------------------------------------------------------
+   3. フォーカス (DESIGN.md §7.1)
+
+   :focus-visible は Baseline Widely available (2022-03) なので @supports 不要。
+   コントラストの根拠は SC 1.4.11 Non-Text Contrast (3:1)。
+   SC 2.4.13 Focus Appearance は AAA で測定軸も別物なので混同しない。
+   -------------------------------------------------------------------------- */
+:where(a, button, input, select, textarea, [tabindex]):focus { outline: none; }
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* sticky ヘッダ・固定列にフォーカスが隠されないようにする (SC 2.4.11 / §7.2) */
+html { scroll-padding-block-start: 4rem; }
+.table-scroll { scroll-padding-inline-start: 8rem; }
+
+/* 確認ダイアログは開いた直後にスクリプトで「破壊しない側」へフォーカスを移す。
+   Selectors 4 ではスクリプトの focus() が直前の操作の focus-visible 状態を継ぐため、
+   マウスで開くと :focus-visible にマッチせずリングが出ない。ここは :focus で明示する。 */
+#confirmDialog .modal-footer .btn:focus {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   4. ステータス表現 (DESIGN.md §2)
+
+   色は補強でしかない。アイコン形状とテキストラベルを必ず併記すること (SC 1.4.1)。
+   4状態のペア間 3:1 は原理的に達成不能なので色だけに頼らせない（DESIGN.md §2.3 の証明）。
+   Bootstrap の text-warning 等は流用しない（白背景で 1.63:1 しかなく SC 1.4.3 を満たさない）。
+   -------------------------------------------------------------------------- */
+.status-present    { color: var(--status-present-fg); }
+.status-partial    { color: var(--status-partial-fg); }
+.status-absent     { color: var(--status-absent-fg); }
+.status-unanswered { color: var(--status-unanswered-fg); }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  padding: .125rem .5rem;
+  border-radius: 999px;
+  font-size: .875rem;   /* 14px。DADS の下限 */
+  line-height: 1.3;     /* 管理画面帯 (§3.2) */
+  font-weight: 500;
+  white-space: nowrap;
+}
+.chip-present    { color: var(--status-present-fg);    background: var(--status-present-chip); }
+.chip-partial    { color: var(--status-partial-fg);    background: var(--status-partial-chip); }
+.chip-absent     { color: var(--status-absent-fg);     background: var(--status-absent-chip); }
+.chip-unanswered { color: var(--status-unanswered-fg); background: var(--status-unanswered-chip); }
+
+/* 出欠テーブルのセレクト。色は枠と文字にだけ乗せ、面は塗らない */
+.att-select {
+  font-size: .875rem;   /* 14px 下限。以前は .8rem (12.8px) だった */
+  padding: .125rem .25rem;
+  min-width: 96px;
+}
+.att-select.is-present    { border-color: var(--status-present-fg);    color: var(--status-present-fg); }
+.att-select.is-partial    { border-color: var(--status-partial-fg);    color: var(--status-partial-fg); }
+.att-select.is-absent     { border-color: var(--status-absent-fg);     color: var(--status-absent-fg); }
+.att-select.is-unanswered { border-color: var(--border);               color: var(--fg-muted); }
+
+/* --------------------------------------------------------------------------
+   5. テーブル
+
+   Carbon の data-table が Column header / Row text を 14px で運用している実例に合わせる
+   (§3.1)。本文 16px とは分ける。
+   -------------------------------------------------------------------------- */
+.table { font-size: .875rem; }
+.table > thead { background: var(--surface-2); }
+
+/* 横スクロール時に固定する列。半透明にすると SC 1.4.11 を別途損なうため必ず不透明 (§7.2) */
 .sticky-col {
   position: sticky;
   left: 0;
-  background: var(--bs-body-bg);
-  z-index: 1;
-  border-right: 2px solid var(--bs-border-color);
+  z-index: 2;
+  background: var(--surface);
+  border-right: 2px solid var(--border);
+}
+thead .sticky-col { background: var(--surface-2); }
+
+/* --------------------------------------------------------------------------
+   6. モーション (DESIGN.md §5.1)
+
+   アニメーションは transform と opacity に限定する。
+   background-color / top / left は compositing 段に乗らず、
+   独自レイヤに載せても CLS の防御にならない。
+   -------------------------------------------------------------------------- */
+.attendance-card { transition: box-shadow .2s; }
+.attendance-card:hover { box-shadow: 0 2px 8px rgb(0 0 0 / .12); }
+
+/* カレンダーから飛んだ先を一時的に示す。
+   ステータス色ではなく中立の --highlight-flash を使う（色の意味を混ぜない）。
+   z-index:-1 で本文の後ろに敷くので、点滅中もテキストのコントラストが変わらない。
+   持続時間 2s は据え置き。推奨値の一次ソースが無く、変える根拠がない（DESIGN.md §8-3）。 */
+.highlight-row { position: relative; }
+.highlight-row::after,
+tr.highlight-row > td::after,
+tr.highlight-row > th::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: var(--highlight-flash);
+  animation: highlight-fade 2s ease-out forwards;
+}
+tr.highlight-row > td, tr.highlight-row > th { position: relative; }
+@keyframes highlight-fade { from { opacity: 1; } to { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  /* 動かさないが表示はする。JS が 2 秒後にクラスを外すので消える */
+  .highlight-row::after,
+  tr.highlight-row > td::after,
+  tr.highlight-row > th::after { animation: none; opacity: 1; }
+  .attendance-card { transition: none; }
 }
 
-/* ── Attendance cards ─────────────────────────────────── */
-.attendance-card {
-  transition: box-shadow .2s;
-}
-.attendance-card:hover {
-  box-shadow: 0 2px 8px rgba(0,0,0,.12);
-}
-
-.highlight-row {
-  animation: highlight 2s ease-out forwards;
-}
-@keyframes highlight {
-  0%   { background-color: rgba(255, 220, 0, 0.4); }
-  100% { background-color: transparent; }
-}
-
-/* ── FullCalendar overrides ───────────────────────────── */
-.fc {
-  font-size: .85rem;
-}
+/* --------------------------------------------------------------------------
+   7. FullCalendar の上書き
+   -------------------------------------------------------------------------- */
+.fc { font-size: .875rem; }        /* 14px 下限。以前は .85rem (13.6px) */
 .fc-event {
-  font-size: .78rem;
-  border-radius: 3px;
-  padding: 1px 3px;
+  font-size: .875rem;              /* 以前は .78rem (12.5px) */
+  border-radius: var(--radius-sm);
+  padding: 1px 4px;
   cursor: pointer;
 }
-.fc-daygrid-event-dot {
-  display: none;
-}
+.fc-daygrid-event-dot { display: none; }
 
-/* ── Status select ────────────────────────────────────── */
-.att-select {
-  font-size: .8rem;
-  padding: 2px 4px;
-  min-width: 90px;
-}
+/* --------------------------------------------------------------------------
+   8. レスポンシブ
 
-/* ── Progress bar ─────────────────────────────────────── */
-.progress {
-  border-radius: 8px;
-}
-
-/* ── Dark mode adjustments ────────────────────────────── */
-[data-bs-theme="dark"] .sticky-col {
-  background: var(--bs-body-bg);
-}
-[data-bs-theme="dark"] .table {
-  --bs-table-bg: transparent;
-}
-
-/* ── Navbar ───────────────────────────────────────────── */
-.navbar-brand {
-  letter-spacing: .5px;
-}
-
-/* ── Responsive ───────────────────────────────────────── */
+   14px を下回らせない。DADS の下限は画面幅に関係なく効く。
+   -------------------------------------------------------------------------- */
 @media (max-width: 576px) {
-  .fc { font-size: .75rem; }
-  .att-select { font-size: .75rem; min-width: 75px; }
+  .att-select { min-width: 84px; }
 }

@@ -3,14 +3,14 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-  <h4 class="mb-0"><i class="bi bi-clipboard-check-fill"></i> {{ msg('Attendance','出欠管理') }}</h4>
+  <h1 class="page-title mb-0"><i class="bi bi-clipboard-check-fill" aria-hidden="true"></i> {{ msg('Attendance','出欠管理') }}</h1>
   <div class="d-flex gap-2 flex-wrap">
     <a href="{{ url_for('admin_export_date', date=sel_date.isoformat()) }}"
        class="btn btn-sm btn-outline-success">
-      <i class="bi bi-download"></i> {{ msg('Day CSV','日別CSV') }}
+      <i class="bi bi-download" aria-hidden="true"></i> {{ msg('Day CSV','日別CSV') }}
     </a>
     <button class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#rangeModal">
-      <i class="bi bi-calendar-range"></i> {{ msg('Range CSV','期間CSV') }}
+      <i class="bi bi-calendar-range" aria-hidden="true"></i> {{ msg('Range CSV','期間CSV') }}
     </button>
   </div>
 </div>
@@ -19,8 +19,8 @@
 <div class="card mb-3">
   <div class="card-body py-2">
     <form class="d-flex gap-2 align-items-center flex-wrap" method="get">
-      <label class="fw-semibold me-1">{{ msg('Date','日付') }}:</label>
-      <input type="date" name="date" class="form-control" style="width:auto"
+      <label class="fw-semibold me-1" for="attDate">{{ msg('Date','日付') }}:</label>
+      <input type="date" name="date" id="attDate" class="form-control" style="width:auto"
              value="{{ sel_date.isoformat() }}" onchange="this.form.submit()">
       <a href="{{ url_for('admin_attendance') }}"
          class="btn btn-outline-secondary btn-sm">{{ msg('Today','今日') }}</a>
@@ -31,7 +31,7 @@
                 onclick="filterTeam('tech')">技術班</button>
         <button type="button" class="btn btn-sm btn-success"
                 onclick="filterTeam('ops')">運営班</button>
-        <button type="button" class="btn btn-sm btn-warning text-dark"
+        <button type="button" class="btn btn-sm btn-dark"
                 onclick="filterTeam('teacher')">顧問</button>
       </div>
     </form>
@@ -44,7 +44,7 @@
   <div class="card-header d-flex justify-content-between align-items-center">
     <span class="fw-semibold">{{ sel_date.strftime('%Y年%m月%d日') if lang == 'ja' else sel_date.strftime('%B %d, %Y') }}</span>
     <button class="btn btn-sm btn-primary" onclick="saveAll()">
-      <i class="bi bi-check-all"></i> {{ msg('Save All','一括保存') }}
+      <i class="bi bi-check-all" aria-hidden="true"></i> {{ msg('Save All','一括保存') }}
     </button>
   </div>
   <div class="card-body p-0">
@@ -52,11 +52,11 @@
       <table class="table table-bordered table-sm align-middle mb-0">
         <thead class="table-light">
           <tr>
-            <th class="sticky-col">{{ msg('Name','名前') }}</th>
+            <th scope="col" class="sticky-col">{{ msg('Name','名前') }}</th>
             {% for ev in events %}
-            <th class="text-center" style="min-width:130px">
+            <th scope="col" class="text-center" style="min-width:140px">
               <div class="fw-semibold small">{{ ev.title }}</div>
-              <div class="text-muted" style="font-size:.75rem">
+              <div class="text-body-secondary">
                 {{ ev.start_time.strftime('%H:%M') }}–{{ ev.end_time.strftime('%H:%M') }}
               </div>
             </th>
@@ -66,30 +66,29 @@
         <tbody>
           {% for u in users %}
           <tr>
-            <td class="fw-semibold sticky-col"
+            <th scope="row" class="fw-semibold sticky-col"
                 data-positions="{{ u.positions|join(',') }}">
               {{ u.name }}
               <div class="mt-1">
                 {% for p in u.positions %}
-                <span class="badge bg-{{ POSITION_COLORS.get(p,'secondary') }} me-1" style="font-size:.65rem">
+                <span class="badge bg-{{ POSITION_COLORS.get(p,'secondary') }} me-1">
                   {{ POSITION_LABELS.get(p, p) }}
                 </span>
                 {% endfor %}
               </div>
-              {% if u.grade %}<div class="text-muted" style="font-size:.7rem">{{ u.grade }}{{ u.user_class or '' }}</div>{% endif %}
-            </td>
+              {% if u.grade %}<div class="text-body-secondary small">{{ u.grade }}{{ u.user_class or '' }}</div>{% endif %}
+            </th>
             {% for ev in events %}
             {% set att = att_map.get((u.id, ev.id)) %}
             {# レコードが無い場合は 'unanswered'。以前は 'absent' に潰しており、
                未回答の部員が「欠席」かつ赤枠で表示されていた。 #}
             {% set cur = att.status if att else 'unanswered' %}
             <td class="text-center p-1">
-              <select class="form-select form-select-sm att-select
-                {% if cur == 'present' %}border-success text-success
-                {% elif cur == 'partial' %}border-warning text-warning
-                {% elif cur == 'absent' %}border-danger text-danger
-                {% else %}text-muted{% endif %}"
+              {# 色は DESIGN.md §2.4 の専用クラス。Bootstrap の text-warning は
+                 白背景で 1.63:1 しかなく SC 1.4.3 を満たさないので使わない #}
+              <select class="form-select form-select-sm att-select is-{{ cur }}"
                 data-uid="{{ u.id }}" data-eid="{{ ev.id }}"
+                aria-label="{{ u.name }} — {{ ev.title }}"
                 onchange="updateSelectStyle(this)">
                 {# 未回答は選択肢として出すが、保存はできない（サーバー側で弾く）。
                    選ばれたままにできないよう disabled にする。 #}
@@ -134,19 +133,19 @@
         <div class="modal-body">
           <div class="row g-3">
             <div class="col-6">
-              <label class="form-label">{{ msg('From','開始日') }}</label>
-              <input type="date" name="from" class="form-control" required>
+              <label class="form-label" for="rangeFrom">{{ msg('From','開始日') }}</label>
+          <input type="date" name="from" id="rangeFrom" class="form-control" required>
             </div>
             <div class="col-6">
-              <label class="form-label">{{ msg('To','終了日') }}</label>
-              <input type="date" name="to" class="form-control" required>
+              <label class="form-label" for="rangeTo">{{ msg('To','終了日') }}</label>
+          <input type="date" name="to" id="rangeTo" class="form-control" required>
             </div>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ msg('Cancel','キャンセル') }}</button>
           <button type="submit" class="btn btn-success">
-            <i class="bi bi-download"></i> {{ msg('Export','エクスポート') }}
+            <i class="bi bi-download" aria-hidden="true"></i> {{ msg('Export','エクスポート') }}
           </button>
         </div>
       </form>
@@ -160,12 +159,8 @@
 const today = '{{ sel_date.isoformat() }}';
 
 function updateSelectStyle(el) {
-  el.className = el.className.replace(/border-\S+|text-\S+/g, '').trim();
-  const v = el.value;
-  if (v === 'present')       { el.classList.add('border-success', 'text-success'); }
-  else if (v === 'partial')  { el.classList.add('border-warning', 'text-warning'); }
-  else if (v === 'absent')   { el.classList.add('border-danger',  'text-danger');  }
-  else                       { el.classList.add('text-muted');                     }
+  el.className = el.className.replace(/is-\S+/g, '').trim();
+  el.classList.add('is-' + el.value);
 }
 
 function filterTeam(pos) {

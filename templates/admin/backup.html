@@ -5,10 +5,10 @@
 <div class="row justify-content-center">
 <div class="col-12 col-xl-9">
 
-<h4 class="mb-4">
-  <i class="bi bi-database-fill-down text-danger"></i>
+<h1 class="page-title mb-4">
+  <i class="bi bi-database-fill-down text-danger" aria-hidden="true"></i>
   {{ msg('Full Backup','フルバックアップ') }}
-</h4>
+</h1>
 
 <!-- Stats -->
 <div class="row g-3 mb-4">
@@ -16,12 +16,12 @@
     (msg('Users','ユーザー'),        'bi-people-fill',          'primary',  'users'),
     (msg('Events','活動'),       'bi-calendar-event-fill',   'info',     'events'),
     (msg('Attendance','出欠ログ'),   'bi-clipboard-check-fill',  'success',  'attendance'),
-    (msg('Templates','テンプレート'),'bi-layout-text-sidebar-reverse','warning','templates'),
+    (msg('Templates','テンプレート'),'bi-layout-text-sidebar-reverse','dark','templates'),
   ] %}
   <div class="col-6 col-md-3">
     <div class="card text-center border-{{ color }}">
       <div class="card-body py-3">
-        <i class="bi {{ icon }} fs-3 text-{{ color }}"></i>
+        <i class="bi {{ icon }} fs-3 text-{{ color }}" aria-hidden="true"></i>
         <div class="fs-3 fw-bold mt-1">{{ counts[key] }}</div>
         <div class="text-muted small">{{ label }}</div>
       </div>
@@ -31,7 +31,7 @@
 </div>
 
 <div class="alert alert-warning d-flex gap-2 align-items-start">
-  <i class="bi bi-shield-exclamation fs-5 flex-shrink-0 mt-1"></i>
+  <i class="bi bi-shield-exclamation fs-5 flex-shrink-0 mt-1" aria-hidden="true"></i>
   <div>
     <strong>{{ msg('Security Notice','セキュリティ注意') }}</strong><br>
     {{ msg(
@@ -48,7 +48,7 @@
   <div class="col-12 col-md-4">
     <div class="card h-100 border-success">
       <div class="card-header bg-success text-white fw-semibold">
-        <i class="bi bi-file-zip-fill"></i>
+        <i class="bi bi-file-zip-fill" aria-hidden="true"></i>
         {{ msg('ZIP (CSV × 4)','ZIP（CSV×4枚）') }}
       </div>
       <div class="card-body">
@@ -59,15 +59,15 @@
           ) }}
         </p>
         <ul class="list-unstyled small mb-3">
-          <li><i class="bi bi-file-earmark-text text-success me-1"></i>users.csv</li>
-          <li><i class="bi bi-file-earmark-text text-success me-1"></i>events.csv</li>
-          <li><i class="bi bi-file-earmark-text text-success me-1"></i>attendance.csv</li>
-          <li><i class="bi bi-file-earmark-text text-success me-1"></i>weekly_templates.csv</li>
-          <li><i class="bi bi-file-earmark-code text-info me-1"></i>backup_info.json</li>
+          <li><i class="bi bi-file-earmark-text text-success me-1" aria-hidden="true"></i>users.csv</li>
+          <li><i class="bi bi-file-earmark-text text-success me-1" aria-hidden="true"></i>events.csv</li>
+          <li><i class="bi bi-file-earmark-text text-success me-1" aria-hidden="true"></i>attendance.csv</li>
+          <li><i class="bi bi-file-earmark-text text-success me-1" aria-hidden="true"></i>weekly_templates.csv</li>
+          <li><i class="bi bi-file-earmark-code text-info me-1" aria-hidden="true"></i>backup_info.json</li>
         </ul>
         <div class="d-grid">
           <a href="{{ url_for('admin_export_zip') }}" class="btn btn-success">
-            <i class="bi bi-download"></i> {{ msg('Download ZIP','ZIPダウンロード') }}
+            <i class="bi bi-download" aria-hidden="true"></i> {{ msg('Download ZIP','ZIPダウンロード') }}
           </a>
         </div>
       </div>
@@ -78,7 +78,7 @@
   <div class="col-12 col-md-4">
     <div class="card h-100 border-primary">
       <div class="card-header bg-primary text-white fw-semibold">
-        <i class="bi bi-filetype-json"></i>
+        <i class="bi bi-filetype-json" aria-hidden="true"></i>
         {{ msg('JSON (full)','JSON（完全）') }}
       </div>
       <div class="card-body">
@@ -89,13 +89,13 @@
           ) }}
         </p>
         <ul class="list-unstyled small mb-3">
-          <li><i class="bi bi-check2 text-primary me-1"></i>{{ msg('Nested structure','階層構造') }}</li>
-          <li><i class="bi bi-check2 text-primary me-1"></i>{{ msg('All relations preserved','リレーション保持') }}</li>
-          <li><i class="bi bi-check2 text-primary me-1"></i>{{ msg('UTF-8 encoded','UTF-8エンコード') }}</li>
+          <li><i class="bi bi-check2 text-primary me-1" aria-hidden="true"></i>{{ msg('Nested structure','階層構造') }}</li>
+          <li><i class="bi bi-check2 text-primary me-1" aria-hidden="true"></i>{{ msg('All relations preserved','リレーション保持') }}</li>
+          <li><i class="bi bi-check2 text-primary me-1" aria-hidden="true"></i>{{ msg('UTF-8 encoded','UTF-8エンコード') }}</li>
         </ul>
         <div class="d-grid">
           <a href="{{ url_for('admin_export_json_full') }}" class="btn btn-primary">
-            <i class="bi bi-download"></i> {{ msg('Download JSON','JSONダウンロード') }}
+            <i class="bi bi-download" aria-hidden="true"></i> {{ msg('Download JSON','JSONダウンロード') }}
           </a>
         </div>
       </div>
@@ -106,7 +106,7 @@
   <div class="col-12 col-md-4">
     <div class="card h-100 border-danger">
       <div class="card-header bg-danger text-white fw-semibold">
-        <i class="bi bi-database-fill"></i>
+        <i class="bi bi-database-fill" aria-hidden="true"></i>
         {{ msg('SQLite DB file','SQLiteファイル') }}
       </div>
       <div class="card-body">
@@ -117,13 +117,13 @@
           ) }}
         </p>
         <ul class="list-unstyled small mb-3">
-          <li><i class="bi bi-check2 text-danger me-1"></i>{{ msg('Complete data','全データ完全収録') }}</li>
-          <li><i class="bi bi-check2 text-danger me-1"></i>{{ msg('Instant restore','ファイル置換で即復元') }}</li>
-          <li><i class="bi bi-check2 text-danger me-1"></i>{{ msg('Opens with DB Browser for SQLite','DB Browser等で閲覧可') }}</li>
+          <li><i class="bi bi-check2 text-danger me-1" aria-hidden="true"></i>{{ msg('Complete data','全データ完全収録') }}</li>
+          <li><i class="bi bi-check2 text-danger me-1" aria-hidden="true"></i>{{ msg('Instant restore','ファイル置換で即復元') }}</li>
+          <li><i class="bi bi-check2 text-danger me-1" aria-hidden="true"></i>{{ msg('Opens with DB Browser for SQLite','DB Browser等で閲覧可') }}</li>
         </ul>
         <div class="d-grid">
           <a href="{{ url_for('admin_export_sqlite_db') }}" class="btn btn-danger">
-            <i class="bi bi-download"></i> {{ msg('Download .db','DBダウンロード') }}
+            <i class="bi bi-download" aria-hidden="true"></i> {{ msg('Download .db','DBダウンロード') }}
           </a>
         </div>
       </div>
@@ -135,13 +135,13 @@
 <!-- Restore instructions -->
 <div class="card mt-4 border-secondary">
   <div class="card-header fw-semibold">
-    <i class="bi bi-arrow-counterclockwise"></i>
+    <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
     {{ msg('How to restore','復元方法') }}
   </div>
   <div class="card-body">
     <div class="row g-3">
       <div class="col-12 col-md-4">
-        <h6 class="fw-bold text-danger"><i class="bi bi-database-fill me-1"></i>{{ msg('SQLite restore (fastest)','SQLite復元（最速）') }}</h6>
+        <h6 class="fw-bold text-danger"><i class="bi bi-database-fill me-1" aria-hidden="true"></i>{{ msg('SQLite restore (fastest)','SQLite復元（最速）') }}</h6>
         <ol class="small ps-3 mb-0">
           <li>{{ msg('Stop the server','サーバーを停止') }}</li>
           <li>{{ msg('Replace','置き換え：') }} <code>attendance.db</code></li>
@@ -149,7 +149,7 @@
         </ol>
       </div>
       <div class="col-12 col-md-4">
-        <h6 class="fw-bold text-primary"><i class="bi bi-filetype-json me-1"></i>{{ msg('JSON restore','JSON復元') }}</h6>
+        <h6 class="fw-bold text-primary"><i class="bi bi-filetype-json me-1" aria-hidden="true"></i>{{ msg('JSON restore','JSON復元') }}</h6>
         <ol class="small ps-3 mb-0">
           <li>{{ msg('Delete the DB file','DBファイルを削除') }}</li>
           <li><code>flask --app app init_db</code></li>
@@ -157,7 +157,7 @@
         </ol>
       </div>
       <div class="col-12 col-md-4">
-        <h6 class="fw-bold text-success"><i class="bi bi-file-zip-fill me-1"></i>{{ msg('CSV reference','CSVはデータ参照用') }}</h6>
+        <h6 class="fw-bold text-success"><i class="bi bi-file-zip-fill me-1" aria-hidden="true"></i>{{ msg('CSV reference','CSVはデータ参照用') }}</h6>
         <p class="small mb-0">
           {{ msg(
             'CSV files are designed for human readability and Excel analysis — not for direct DB import.',
