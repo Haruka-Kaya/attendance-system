@@ -156,7 +156,9 @@ POSITION_LABELS = {'tech': '技術班', 'ops': '運営班', 'teacher': '顧問'}
 # Bootstrap の warning (#ffc107) は白文字で 1.63:1、白背景の text-warning も 1.63:1 しかなく
 # SC 1.4.3 (AA) を満たさない。班は状態でも破壊的操作でもないので、
 # コントラストの取れる色に置き換える (DESIGN.md §2.2 / §2.3)。
-POSITION_COLORS = {'tech': 'primary', 'ops': 'success', 'teacher': 'dark'}
+# 'dark' は #212529 でダーク背景に対し 1.19:1 しかなく SC 1.4.11 (3:1) を満たさない。
+# 'secondary' はライト 4.69 / ダーク 3.93 で両テーマとも通る（実測）。
+POSITION_COLORS = {'tech': 'primary', 'ops': 'success', 'teacher': 'secondary'}
 
 # ── Jinja helpers ──────────────────────────────────────────────────────────────
 
