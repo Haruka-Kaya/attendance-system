@@ -340,8 +340,13 @@ def login_required(role=None):
             if not user or not user.is_active:
                 session.clear()
                 return redirect(url_for('login'))
-            if user.must_change_password and request.endpoint != 'change_password':
-                return redirect(url_for('change_password'))
+            # 初回ログインは onboarding へ誘導する (login 側の遷移先と揃える)。
+            # onboarding を除外しないと、login → onboarding → change_password と
+            # 弾かれて onboarding 画面に永久に到達できず、学年・班の入力も
+            # 行われないままになる。change_password は自主的な変更用に通す。
+            if user.must_change_password and request.endpoint not in ('change_password',
+                                                                      'onboarding'):
+                return redirect(url_for('onboarding'))
             if role:
                 required = [role] if isinstance(role, str) else list(role)
                 min_level = min(ROLE_LEVEL.get(r, 99) for r in required)
