@@ -80,14 +80,23 @@
             </td>
             {% for ev in events %}
             {% set att = att_map.get((u.id, ev.id)) %}
-            {% set cur = att.status if att else 'absent' %}
+            {# レコードが無い場合は 'unanswered'。以前は 'absent' に潰しており、
+               未回答の部員が「欠席」かつ赤枠で表示されていた。 #}
+            {% set cur = att.status if att else 'unanswered' %}
             <td class="text-center p-1">
               <select class="form-select form-select-sm att-select
                 {% if cur == 'present' %}border-success text-success
                 {% elif cur == 'partial' %}border-warning text-warning
-                {% else %}border-danger text-danger{% endif %}"
+                {% elif cur == 'absent' %}border-danger text-danger
+                {% else %}text-muted{% endif %}"
                 data-uid="{{ u.id }}" data-eid="{{ ev.id }}"
                 onchange="updateSelectStyle(this)">
+                {# 未回答は選択肢として出すが、保存はできない（サーバー側で弾く）。
+                   選ばれたままにできないよう disabled にする。 #}
+                <option value="unanswered" disabled
+                        {% if cur=='unanswered' %}selected{% endif %}>
+                  {{ msg('No answer','未回答') }}
+                </option>
                 <option value="present" {% if cur=='present' %}selected{% endif %}>
                   {{ msg('Present','出席') }}
                 </option>
@@ -153,9 +162,10 @@ const today = '{{ sel_date.isoformat() }}';
 function updateSelectStyle(el) {
   el.className = el.className.replace(/border-\S+|text-\S+/g, '').trim();
   const v = el.value;
-  if (v === 'present')  { el.classList.add('border-success', 'text-success'); }
-  else if (v === 'partial') { el.classList.add('border-warning', 'text-warning'); }
-  else                       { el.classList.add('border-danger',  'text-danger');  }
+  if (v === 'present')       { el.classList.add('border-success', 'text-success'); }
+  else if (v === 'partial')  { el.classList.add('border-warning', 'text-warning'); }
+  else if (v === 'absent')   { el.classList.add('border-danger',  'text-danger');  }
+  else                       { el.classList.add('text-muted');                     }
 }
 
 function filterTeam(pos) {

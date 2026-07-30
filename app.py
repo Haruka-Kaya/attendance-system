@@ -128,7 +128,18 @@ GRADE_OPTIONS = ['M1', 'M2', 'M3', 'H1', 'H2', 'H3', 'H4',
                  'G1', 'G2', 'G3', 'ID1', 'ID2', 'ID3', 'OB']
 VALID_GRADES = set(GRADE_OPTIONS)
 ROLE_LEVEL = {'user': 1, 'manager': 2, 'admin': 3}
-STATUS_LABEL_JA = {'present': '出席', 'absent': '欠席', 'partial': '部分参加'}
+
+# 「未回答」は Attendance レコードが存在しないことの表現であって、保存する値ではない。
+# 本人が選べるのは SETTABLE_STATUSES の3つだけ。
+#
+# 以前は「レコードが無い」を暗黙に 'absent'（欠席）へ潰していたため、
+# まだ出欠を出していない部員が欠席として表示・集計されていた。
+# 表示上は欠席と区別するが、出席率の計算では従来どおり未出席として扱う
+# （出席率 = (出席 + 部分参加) / 全イベント数。分母は変えない）。
+STATUS_UNANSWERED = 'unanswered'
+SETTABLE_STATUSES = ('present', 'absent', 'partial')
+STATUS_LABEL_JA = {'present': '出席', 'absent': '欠席', 'partial': '部分参加',
+                   STATUS_UNANSWERED: '未回答'}
 DAY_NAMES_JA = ['月', '火', '水', '木', '金', '土', '日']
 DAY_NAMES_EN = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 POSITION_LABELS = {'tech': '技術班', 'ops': '運営班', 'teacher': '顧問'}
@@ -536,6 +547,10 @@ def dashboard():
 
     present = sum(1 for a in user_atts if a.status == 'present')
     partial = sum(1 for a in user_atts if a.status == 'partial')
+    absent  = sum(1 for a in user_atts if a.status == 'absent')
+    # 未回答 = 全イベント数 − 回答済みのイベント数。欠席とは別に数える。
+    unanswered = max(0, total_events - present - partial - absent)
+    # 出席率の定義は変更しない。未回答は未出席として分母に残る。
     rate = round((present + partial) / total_events * 100) if total_events else 0
 
     today_events = (Event.query.filter_by(date=today)
@@ -550,7 +565,8 @@ def dashboard():
                            total_events=total_events,
                            present=present,
                            partial=partial,
-                           absent=total_events - present - partial,
+                           absent=absent,
+                           unanswered=unanswered,
                            rate=rate,
                            today_events=today_events,
                            recent_events=recent_events,
@@ -564,12 +580,12 @@ def update_attendance():
     validate_csrf()
     user = g.current_user
     event_id = request.form.get('event_id', type=int)
-    status = request.form.get('status', 'absent')
+    status = request.form.get('status', '')
     comment = request.form.get('comment', '').strip() or None
     partial_start = request.form.get('partial_start', '').strip()
     partial_end = request.form.get('partial_end', '').strip()
 
-    if not event_id or status not in ('present', 'absent', 'partial'):
+    if not event_id or status not in SETTABLE_STATUSES:
         flash(msg('Invalid input.', '入力値が不正です。'), 'danger')
         return redirect(url_for('dashboard'))
 
@@ -893,8 +909,8 @@ def admin_bulk_update():
     for item in data:
         uid = item.get('user_id')
         eid = item.get('event_id')
-        status = item.get('status', 'absent')
-        if not uid or not eid or status not in ('present', 'absent', 'partial'):
+        status = item.get('status', '')
+        if not uid or not eid or status not in SETTABLE_STATUSES:
             continue
         att = Attendance.query.filter_by(user_id=uid, event_id=eid).first()
         if not att:
@@ -1001,15 +1017,18 @@ def admin_export_summary():
 
     buf = io.StringIO()
     w = csv.writer(buf)
-    w.writerow(['名前', '学年', 'クラス', 'ロール', '出席', '部分参加', '欠席', '出席率(%)'])
+    w.writerow(['名前', '学年', 'クラス', 'ロール',
+                '出席', '部分参加', '欠席', '未回答', '出席率(%)'])
     for u in users:
         c = defaultdict(int)
         for a in u.attendances:
             c[a.status] += 1
         attended = c['present'] + c['partial']
+        # 未回答は「レコードが無いイベント」の数。欠席とは別列にする。
+        unanswered = max(0, total - c['present'] - c['partial'] - c['absent'])
         rate = round(attended / total * 100) if total else 0
         w.writerow([u.name, u.grade or '', u.user_class or '', u.role,
-                    c['present'], c['partial'], c['absent'], rate])
+                    c['present'], c['partial'], c['absent'], unanswered, rate])
 
     resp = make_response('﻿' + buf.getvalue())
     resp.headers['Content-Type'] = 'text/csv; charset=utf-8'
@@ -1361,7 +1380,8 @@ def api_events():
     result = []
     for ev in q.order_by(Event.date, Event.start_time).all():
         d = ev.to_dict()
-        status = att_map.get(ev.id, 'absent')
+        status = att_map.get(ev.id, STATUS_UNANSWERED)
+        # 未回答は既定の中立色（末尾の get 既定値）に落ちる。欠席の赤にはしない。
         d['color'] = {'present': '#28a745', 'partial': '#ffc107', 'absent': '#dc3545'}.get(
             status, '#6c757d')
         d['extendedProps'] = {'status': status}
@@ -1392,7 +1412,7 @@ def api_attendance_by_date(date_str):
             a = att_map.get((u.id, e.id))
             ud['events'].append({
                 'event_id': e.id, 'title': e.title,
-                'status': a.status if a else 'absent',
+                'status': a.status if a else STATUS_UNANSWERED,
                 'comment': a.comment if a else None,
             })
         result.append(ud)
@@ -1657,7 +1677,8 @@ def api_onboarding():
 
 def _event_attendees_map(event_ids):
     """イベントIDのリストに対し、{event_id: [{user_id, name, status, ...}, ...]} を返す。
-    出欠登録していないアクティブユーザーは absent 扱いで含める。"""
+    出欠を登録していないアクティブユーザーは STATUS_UNANSWERED（未回答）で含める。
+    欠席と混同しないこと。"""
     if not event_ids:
         return {}
     all_users = User.query.filter_by(is_active=True).order_by(User.name).all()
@@ -1670,7 +1691,7 @@ def _event_attendees_map(event_ids):
             result[eid].append({
                 'user_id': u.id,
                 'name':    u.name,
-                'status':  a.status if a else 'absent',
+                'status':  a.status if a else STATUS_UNANSWERED,
                 'comment': a.comment if a else None,
             })
     return result
@@ -1683,10 +1704,11 @@ def _attach_attendees(events_dicts, event_ids):
         attendees = att_map.get(d['id'], [])
         d['attendees'] = attendees
         d['summary'] = {
-            'present': sum(1 for a in attendees if a['status'] == 'present'),
-            'partial': sum(1 for a in attendees if a['status'] == 'partial'),
-            'absent':  sum(1 for a in attendees if a['status'] == 'absent'),
-            'total':   len(attendees),
+            'present':    sum(1 for a in attendees if a['status'] == 'present'),
+            'partial':    sum(1 for a in attendees if a['status'] == 'partial'),
+            'absent':     sum(1 for a in attendees if a['status'] == 'absent'),
+            'unanswered': sum(1 for a in attendees if a['status'] == STATUS_UNANSWERED),
+            'total':      len(attendees),
         }
 
 
@@ -1709,7 +1731,7 @@ def api_v1_events():
     for ev in events:
         d = ev.to_dict()
         a = att_map.get(ev.id)
-        d['my_status']        = a.status       if a else 'absent'
+        d['my_status']        = a.status       if a else STATUS_UNANSWERED
         d['my_comment']       = a.comment      if a else None
         d['my_partial_start'] = a.partial_start.strftime('%H:%M') if a and a.partial_start else None
         d['my_partial_end']   = a.partial_end.strftime('%H:%M')   if a and a.partial_end   else None
@@ -1732,7 +1754,7 @@ def api_v1_events_upcoming():
     for ev in events:
         d = ev.to_dict()
         a = att_map.get(ev.id)
-        d['my_status']  = a.status  if a else 'absent'
+        d['my_status']  = a.status  if a else STATUS_UNANSWERED
         d['my_comment'] = a.comment if a else None
         result.append(d)
     _attach_attendees(result, [e.id for e in events])
@@ -1832,8 +1854,8 @@ def api_v1_update_attendance():
     user = g.jwt_user
     data = request.get_json() or {}
     eid    = data.get('event_id')
-    status = data.get('status', 'absent')
-    if not eid or status not in ('present', 'absent', 'partial'):
+    status = data.get('status', '')
+    if not eid or status not in SETTABLE_STATUSES:
         return jsonify({'error': 'Invalid data'}), 400
     if not db.session.get(Event, eid):
         return jsonify({'error': 'Event not found'}), 404
@@ -1879,7 +1901,7 @@ def api_v1_attendance_date(date_str):
             a = att_map.get((u.id, ev.id))
             ud['events'].append({
                 'event_id': ev.id, 'title': ev.title,
-                'status':   a.status  if a else 'absent',
+                'status':   a.status  if a else STATUS_UNANSWERED,
                 'comment':  a.comment if a else None,
             })
         result.append(ud)
@@ -1896,8 +1918,8 @@ def api_v1_bulk_attendance():
         return jsonify({'error': 'Expected list'}), 400
     for item in items:
         uid = item.get('user_id'); eid = item.get('event_id')
-        status = item.get('status', 'absent')
-        if not uid or not eid or status not in ('present', 'absent', 'partial'): continue
+        status = item.get('status', '')
+        if not uid or not eid or status not in SETTABLE_STATUSES: continue
         att = Attendance.query.filter_by(user_id=uid, event_id=eid).first()
         if not att:
             att = Attendance(user_id=uid, event_id=eid); db.session.add(att)
@@ -2123,7 +2145,9 @@ def api_v1_stats():
             'id': u.id, 'name': u.name, 'grade': u.grade,
             'user_class': u.user_class, 'positions': u.positions,
             'present': c['present'], 'partial': c['partial'], 'absent': c['absent'],
+            'unanswered': max(0, total - c['present'] - c['partial'] - c['absent']),
             'total': total,
+            # 出席率の定義は据え置き。未回答は未出席として分母に残る。
             'rate': round(attended / total, 3) if total else 0.0,
         })
     return jsonify({'total_events': total, 'users': result})

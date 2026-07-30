@@ -2,7 +2,10 @@
 <form method="post" action="{{ url_for('update_attendance') }}" class="d-flex gap-2 flex-wrap align-items-center">
   <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
   <input type="hidden" name="event_id" value="{{ ev.id }}">
-  {% set cur_status = att.status if att else 'absent' %}
+  {# 未回答（レコードが無い）ときはどれも選択しない。
+     以前は 'absent' を既定にしていたため、まだ出欠を出していない部員に
+     「欠席」が選択済みとして表示されていた。 #}
+  {% set cur_status = att.status if att else none %}
   <div class="btn-group btn-group-sm" role="group">
     {% for val, label, cls in [('present', msg('Present','出席'), 'success'),
                                 ('partial', msg('Partial','部分'), 'warning'),
